@@ -1,0 +1,26 @@
+# Secrets — ne JAMAIS versionner (clé API réelle)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Données volatiles / artefacts
+backend/data/logs/
+backend/data/*.sqlite
+backend/data/*.db
+*.png
+docs/*.docx
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

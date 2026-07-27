@@ -1,0 +1,412 @@
+{
+  "_meta": {
+    "description": "Ressources officielles ANSD et partenaires, rattachees aux reponses du chatbot. Chaque URL a ete verifiee (HTTP 200) le 2026-07-06.",
+    "verification": "curl -L, statut 200 pour chaque entree",
+    "derniere_verification": "2026-07-08"
+  },
+  "resources": [
+    {
+      "id": "ansd_accueil",
+      "titre": "Site officiel de l'ANSD",
+      "url": "https://www.ansd.sn/",
+      "type": "portail",
+      "themes": [
+        "site officiel",
+        "portail",
+        "accueil",
+        "site de l'ansd"
+      ]
+    },
+    {
+      "id": "ansd_contact",
+      "titre": "Contacter l'ANSD (formulaire, adresse, téléphone)",
+      "url": "https://www.ansd.sn/contact",
+      "type": "service",
+      "themes": [
+        "contact",
+        "contacter",
+        "adresse",
+        "telephone",
+        "email",
+        "courriel",
+        "ecrire",
+        "demande de donnees",
+        "demande specifique",
+        "rendez-vous",
+        "joindre"
+      ]
+    },
+    {
+      "id": "ansd_publications",
+      "titre": "Publications de l'ANSD",
+      "url": "https://www.ansd.sn/publications",
+      "type": "portail",
+      "themes": [
+        "publication",
+        "rapport",
+        "document",
+        "telecharger"
+      ]
+    },
+    {
+      "id": "flash_stats",
+      "titre": "Dernières parutions de l'ANSD",
+      "url": "https://www.ansd.sn/flash-stats",
+      "type": "portail",
+      "themes": [
+        "parution",
+        "derniere publication",
+        "nouveaute",
+        "bulletin",
+        "recent"
+      ]
+    },
+    {
+      "id": "ansd_indicateurs",
+      "titre": "Principaux indicateurs du Sénégal",
+      "url": "https://www.ansd.sn/indicateurs",
+      "type": "portail",
+      "themes": [
+        "indicateur",
+        "chiffres cles",
+        "tableau de bord"
+      ]
+    },
+    {
+      "id": "ansd_actualites",
+      "titre": "Actualités de l'ANSD",
+      "url": "https://www.ansd.sn/actualites",
+      "type": "portail",
+      "themes": [
+        "actualite",
+        "nouvelle",
+        "evenement"
+      ]
+    },
+    {
+      "id": "ansd_calendrier",
+      "titre": "Calendrier officiel de publications",
+      "url": "https://www.ansd.sn/calendrier-de-publications",
+      "type": "service",
+      "themes": [
+        "calendrier",
+        "date de publication",
+        "quand",
+        "parution",
+        "prochaine publication",
+        "diffusion",
+        "agenda"
+      ]
+    },
+    {
+      "id": "ansd_bases",
+      "titre": "Bases de données de l'ANSD (ANADS, Open Data, annuaire)",
+      "url": "https://www.ansd.sn/bases-de-donnees",
+      "type": "portail",
+      "themes": [
+        "base de donnees",
+        "open data",
+        "annuaire statistique",
+        "donnees ouvertes",
+        "csv",
+        "json"
+      ]
+    },
+    {
+      "id": "anads",
+      "titre": "ANADS — archive nationale des microdonnées",
+      "url": "https://anads.ansd.sn/",
+      "type": "portail",
+      "themes": [
+        "microdonnee",
+        "anads",
+        "catalogue",
+        "chercheur",
+        "recherche",
+        "acceder aux donnees",
+        "telecharger les donnees",
+        "metadonnees"
+      ]
+    },
+    {
+      "id": "ansd_presse",
+      "titre": "Espace presse de l'ANSD",
+      "url": "https://www.ansd.sn/espace-presse",
+      "type": "service",
+      "themes": [
+        "presse",
+        "journaliste",
+        "communique",
+        "media"
+      ]
+    },
+    {
+      "id": "ansd_enquetes",
+      "titre": "Enquêtes et études en cours",
+      "url": "https://www.ansd.sn/enquete",
+      "type": "portail",
+      "themes": [
+        "enquete en cours",
+        "etude en cours",
+        "operation",
+        "collecte"
+      ]
+    },
+    {
+      "id": "ansd_phare",
+      "titre": "Bulletin institutionnel « Le Phare »",
+      "url": "https://www.ansd.sn/bulletin-le-phare",
+      "type": "note",
+      "themes": [
+        "phare",
+        "bulletin institutionnel",
+        "vulgarisation"
+      ]
+    },
+    {
+      "id": "ensae",
+      "titre": "ENSAE Pierre Ndiaye — école de statistique (concours, formations)",
+      "url": "https://www.ensae.sn/",
+      "type": "portail",
+      "themes": [
+        "ensae",
+        "ecole",
+        "formation",
+        "concours",
+        "etudiant",
+        "master",
+        "statisticien",
+        "ise",
+        "its",
+        "admission",
+        "etudier",
+        "stage"
+      ]
+    },
+    {
+      "id": "rgph5_rapports",
+      "titre": "RGPH-5 2023 — rapports des résultats définitifs",
+      "url": "https://www.ansd.sn/rapports/rgph-5-2023",
+      "type": "rapports",
+      "themes": [
+        "rgph",
+        "recensement",
+        "demographie",
+        "fecondite",
+        "esperance de vie",
+        "urbanisation",
+        "migration"
+      ]
+    },
+    {
+      "id": "rgph5_page",
+      "titre": "RGPH-5 2023 — présentation de l'opération",
+      "url": "https://www.ansd.sn/enquete-et-etude/recensement-general-de-la-population-et-de-lhabitat-rgph-5-2023",
+      "type": "methodologie",
+      "themes": [
+        "methodologie du recensement",
+        "capi",
+        "denombrement"
+      ]
+    },
+    {
+      "id": "rgph5_note_presse",
+      "titre": "Principaux résultats du RGPH-5 (note de presse)",
+      "url": "https://www.ansd.sn/actualite/les-principaux-resultats-du-5e-recensement-general-de-la-population-et-de-lhabitat-du",
+      "type": "note",
+      "themes": [
+        "resultats du recensement"
+      ]
+    },
+    {
+      "id": "rgph5_prelim_pdf",
+      "titre": "Rapport préliminaire du RGPH-5 (PDF)",
+      "url": "https://www.ansd.sn/sites/default/files/2023-10/RAPPORT-PRELIMINAIRE-RGPH-5_2023-.pdf",
+      "type": "pdf",
+      "themes": [
+        "rapport preliminaire"
+      ]
+    },
+    {
+      "id": "recensement_sn",
+      "titre": "Plateforme interactive du recensement (recensement.sn)",
+      "url": "https://www.recensement.sn/",
+      "type": "portail",
+      "themes": [
+        "recensement interactif",
+        "localite",
+        "commune",
+        "departement"
+      ]
+    },
+    {
+      "id": "enes_page",
+      "titre": "Enquête Emploi (ENES) — notes trimestrielles",
+      "url": "https://www.ansd.sn/Indicateur/enquete-emploi",
+      "type": "indicateur",
+      "themes": [
+        "enes",
+        "emploi",
+        "chomage",
+        "activite",
+        "travail",
+        "sous-emploi"
+      ]
+    },
+    {
+      "id": "enes_t1_2024_pdf",
+      "titre": "Note ENES T1 2024 (PDF)",
+      "url": "https://www.ansd.sn/sites/default/files/2024-07/Rapport_enes_T1_2024_VF.pdf",
+      "type": "pdf",
+      "themes": [
+        "note enes"
+      ]
+    },
+    {
+      "id": "ihpc_page",
+      "titre": "Évolution annuelle de l'IHPC (inflation)",
+      "url": "https://www.ansd.sn/Indicateur/evolution-annuelle-de-lindice-harmonise-des-prix-la-consommation",
+      "type": "indicateur",
+      "themes": [
+        "ihpc",
+        "inflation",
+        "prix",
+        "consommation"
+      ]
+    },
+    {
+      "id": "ehcvm_rapport_pdf",
+      "titre": "Rapport final EHCVM II 2021/2022 (PDF)",
+      "url": "https://www.ansd.sn/sites/default/files/2024-07/Rapport_Final_EHCVM_2021-2022_VF_0.pdf",
+      "type": "pdf",
+      "themes": [
+        "ehcvm",
+        "pauvrete",
+        "gini",
+        "inegalite",
+        "conditions de vie",
+        "insecurite alimentaire"
+      ]
+    },
+    {
+      "id": "ehcvm_note_pdf",
+      "titre": "Note de presse EHCVM II (PDF)",
+      "url": "https://www.ansd.sn/sites/default/files/2024-07/NOTE%20DE%20PRESSE%20EHCVM%20II.pdf",
+      "type": "pdf",
+      "themes": [
+        "note ehcvm"
+      ]
+    },
+    {
+      "id": "pauvrete_suivi",
+      "titre": "Rapports des enquêtes de suivi de la pauvreté",
+      "url": "https://www.ansd.sn/Indicateur/rapport-des-enquetes-de-suivi-de-la-pauvrete",
+      "type": "indicateur",
+      "themes": [
+        "suivi de la pauvrete",
+        "esps"
+      ]
+    },
+    {
+      "id": "economie_2024",
+      "titre": "État de l'économie sénégalaise (comptes nationaux)",
+      "url": "https://www.ansd.sn/actualite/etat-de-leconomie-senegalaise-au-premier-primestre-2024",
+      "type": "note",
+      "themes": [
+        "pib",
+        "croissance",
+        "economie",
+        "comptes nationaux",
+        "conjoncture"
+      ]
+    },
+    {
+      "id": "bdef",
+      "titre": "Banque de Données Économiques et Financières (BDEF)",
+      "url": "https://www.ansd.sn/Indicateur/banque-de-donnees-economiques-et-financieres-bdef",
+      "type": "portail",
+      "themes": [
+        "bdef",
+        "series economiques",
+        "macroeconomie"
+      ]
+    },
+    {
+      "id": "ses_nationales",
+      "titre": "Situation Économique et Sociale du Sénégal (SES) — édition nationale",
+      "url": "https://www.ansd.sn/themes/situation-economiques-et-sociales/ses-nationales",
+      "type": "publication",
+      "themes": [
+        "situation economique et sociale",
+        "ses",
+        "annuaire statistique",
+        "tous les secteurs",
+        "agriculture",
+        "peche",
+        "elevage",
+        "industrie",
+        "commerce",
+        "transport",
+        "tourisme",
+        "education",
+        "sante",
+        "emploi",
+        "comptes nationaux",
+        "rapport annuel"
+      ]
+    },
+    {
+      "id": "ses_regionales",
+      "titre": "Situation Économique et Sociale — éditions régionales (SES régionales)",
+      "url": "https://www.ansd.sn/themes/situation-economiques-et-sociales/ses-regionales",
+      "type": "publication",
+      "themes": [
+        "ses regionale",
+        "situation economique regionale",
+        "region",
+        "donnees regionales"
+      ]
+    },
+    {
+      "id": "dapsa",
+      "titre": "DAPSA — Direction de l'Analyse, de la Prévision et des Statistiques Agricoles",
+      "url": "https://www.dapsa.gouv.sn/",
+      "type": "portail",
+      "themes": [
+        "agriculture",
+        "agricole",
+        "dapsa",
+        "statistiques agricoles",
+        "elevage",
+        "cultures",
+        "production agricole",
+        "enquete agricole"
+      ]
+    },
+    {
+      "id": "ipar",
+      "titre": "IPAR — Initiative Prospective Agricole et Rurale",
+      "url": "https://ipar.sn/",
+      "type": "portail",
+      "themes": [
+        "ipar",
+        "politiques agricoles",
+        "developpement rural",
+        "recherche agricole",
+        "monde rural"
+      ]
+    },
+    {
+      "id": "ansd_toutes_publications",
+      "titre": "Toutes les publications de l'ANSD",
+      "url": "https://www.ansd.sn/toutes-les-publications",
+      "type": "page",
+      "themes": [
+        "toutes les publications",
+        "catalogue des publications",
+        "rapports",
+        "documents"
+      ]
+    }
+  ]
+}

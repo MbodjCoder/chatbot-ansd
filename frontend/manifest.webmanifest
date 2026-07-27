@@ -1,0 +1,19 @@
+{
+  "name": "RAMA — Assistant statistique de l'ANSD",
+  "short_name": "RAMA",
+  "description": "Accès conversationnel aux statistiques officielles du Sénégal (ANSD) : chiffres, comparaisons et documents sourcés.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f8fc",
+  "theme_color": "#0e79c4",
+  "categories": ["education", "government", "productivity"],
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,35 @@
+# Déploiement production RAMA — API FastAPI mono-instance (recherche TF-IDF,
+# aucune dépendance GPU/vectorielle). Le frontend est servi par la même app.
+# Variables lues depuis un fichier .env placé à côté de ce compose (voir
+# .env.example). La clé LLM est OBLIGATOIRE (${VAR:?...} échoue si absente).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ANSD_MODE: production
+      ANSD_LLM_PROVIDER: ${ANSD_LLM_PROVIDER:-groq}
+      ANSD_LLM_API_KEY: ${ANSD_LLM_API_KEY:?definir ANSD_LLM_API_KEY dans .env}
+      ANSD_LLM_GEN: ${ANSD_LLM_GEN:-auto}
+      ANSD_LLM_AUX: ${ANSD_LLM_AUX:-auto}
+      # Origines autorisées : l'UI embarquée est en même origine (CORS inutile),
+      # ceci n'ouvre l'API qu'aux domaines listés pour des appels tiers.
+      ANSD_CORS_ORIGINS: ${ANSD_CORS_ORIGINS:-https://www.ansd.sn,https://ansd.sn}
+      # true UNIQUEMENT derrière un reverse-proxy de confiance (nginx/caddy) qui
+      # pose X-Forwarded-For ; sinon false (évite l'usurpation d'IP du rate-limit).
+      ANSD_TRUST_PROXY: ${ANSD_TRUST_PROXY:-false}
+    ports: ["8000:8000"]
+    restart: unless-stopped
+    volumes:
+      - rama_logs:/srv/data/logs
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/api/health',timeout=4).status==200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  rama_logs:

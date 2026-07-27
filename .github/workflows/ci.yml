@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r backend/requirements.txt
+
+      - name: Construire la base + le routeur (hors ligne)
+        working-directory: backend
+        env:
+          ANSD_MODE: demo
+        run: |
+          python scripts/seed_db.py
+          python scripts/train_router.py
+
+      - name: Tests système (mode démo, déterministe)
+        working-directory: backend
+        env:
+          ANSD_MODE: demo
+        run: python -m pytest tests/test_system.py -q
+
+      - name: Intégration client LLM (faux serveur OpenAI local)
+        working-directory: backend
+        env:
+          ANSD_MODE: demo
+        run: python tests/test_llm_integration.py
+
+      - name: Évaluation qualité (garde-barrière exactitude + sécurité)
+        working-directory: backend
+        env:
+          ANSD_MODE: demo
+        run: python scripts/evaluate.py
+
+  build-image:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier que l'image Docker se construit
+        run: docker build -f backend/Dockerfile -t rama:ci .
