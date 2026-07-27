@@ -1,0 +1,17 @@
+# --- Noyau (mode demo, aucune dependance GPU/reseau) ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic-settings>=2.2
+scikit-learn>=1.4
+pandas>=2.2
+scipy>=1.12
+joblib>=1.3
+httpx>=0.27
+
+# --- Mode production (decommenter) ---
+# FlagEmbedding>=1.2        # BGE-M3
+# qdrant-client>=1.9
+# transformers>=4.40        # DeBERTa-v3 (routeur)
+# sentencepiece
+# datasets ; accelerate     # fine-tuning
+# ragas>=0.1 ; datasets     # evaluation RAGAS

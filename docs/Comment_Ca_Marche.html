@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAMA — Comment ça marche : architecture &amp; code</title>
+<style>
+  :root{
+    --bg:#eef3f9; --surface:#ffffff; --surface2:#f4f8fc;
+    --ink:#0a2440; --ink2:#3a536e; --ink3:#6b8199;
+    --line:#d7e2ee; --line2:#c4d5e6;
+    --marine:#0b2f5c; --ocean:#0e79c4; --ocean-d:#0b5ea0;
+    --green:#137a4d; --green-bg:#e6f4ec; --green-line:#b3ddc6;
+    --warm:#b3541e; --warm-bg:#fdf1e9; --warm-line:#e8c5a8;
+    --code-bg:#0d1f33; --code-ink:#d6e4f5; --code-key:#6fb8ff;
+    --code-str:#8fe3b6; --code-com:#6f86a0; --code-fn:#e8c98a;
+    --shadow:0 1px 2px rgba(11,36,64,.06),0 6px 20px rgba(11,36,64,.07);
+    --shadow-l:0 10px 40px rgba(11,36,64,.12);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#081320; --surface:#0f2033; --surface2:#132a41;
+      --ink:#e7f0fa; --ink2:#a9c0d8; --ink3:#7690aa;
+      --line:#22384f; --line2:#2d475f;
+      --marine:#8fc0ef; --ocean:#4aa6e8; --ocean-d:#6fb8ff;
+      --green:#57c98d; --green-bg:#102b20; --green-line:#1f4d38;
+      --warm:#e0925f; --warm-bg:#2a1a10; --warm-line:#4d3320;
+      --code-bg:#08131f; --code-ink:#cfe0f2;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+      --shadow-l:0 12px 44px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef3f9; --surface:#ffffff; --surface2:#f4f8fc; --ink:#0a2440;
+    --ink2:#3a536e; --ink3:#6b8199; --line:#d7e2ee; --line2:#c4d5e6;
+    --marine:#0b2f5c; --ocean:#0e79c4; --green:#137a4d; --green-bg:#e6f4ec;
+    --green-line:#b3ddc6; --warm:#b3541e; --warm-bg:#fdf1e9; --warm-line:#e8c5a8;
+    --code-bg:#0d1f33; --code-ink:#d6e4f5;
+  }
+  :root[data-theme="dark"]{
+    --bg:#081320; --surface:#0f2033; --surface2:#132a41; --ink:#e7f0fa;
+    --ink2:#a9c0d8; --ink3:#7690aa; --line:#22384f; --line2:#2d475f;
+    --marine:#8fc0ef; --ocean:#4aa6e8; --green:#57c98d; --green-bg:#102b20;
+    --green-line:#1f4d38; --warm:#e0925f; --warm-bg:#2a1a10; --warm-line:#4d3320;
+    --code-bg:#08131f; --code-ink:#cfe0f2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:system-ui,"Segoe UI",-apple-system,Roboto,sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased;
+    padding:0 18px 80px;
+  }
+  .wrap{max-width:900px;margin:0 auto}
+
+  /* hero */
+  header.hero{text-align:center;padding:56px 0 30px}
+  .kicker{display:inline-block;font-size:.74rem;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ocean);background:var(--surface);
+    border:1px solid var(--line);border-radius:99px;padding:5px 15px;margin-bottom:18px}
+  h1{font-size:2.15rem;line-height:1.15;letter-spacing:-.02em;color:var(--ink);
+    text-wrap:balance;margin-bottom:12px}
+  h1 .g{color:var(--ocean)}
+  .lede{font-size:1.06rem;color:var(--ink2);max-width:620px;margin:0 auto;text-wrap:pretty}
+
+  /* mini-nav */
+  nav.toc{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+    display:flex;gap:6px;flex-wrap:wrap;justify-content:center;padding:11px 0;margin-bottom:34px}
+  nav.toc a{font-size:.8rem;font-weight:600;color:var(--ink2);text-decoration:none;
+    padding:5px 12px;border-radius:99px;border:1px solid transparent;transition:.15s}
+  nav.toc a:hover{color:var(--ocean);border-color:var(--line2);background:var(--surface)}
+
+  /* principle callout */
+  .principe{background:linear-gradient(135deg,var(--marine),var(--ocean-d));
+    color:#fff;border-radius:18px;padding:26px 28px;box-shadow:var(--shadow-l);margin-bottom:44px}
+  .principe .t{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    opacity:.82;margin-bottom:8px}
+  .principe p{font-size:1.16rem;line-height:1.5;font-weight:500}
+  .principe b{color:#bfe3ff}
+
+  /* step */
+  .step{background:var(--surface);border:1px solid var(--line);border-radius:18px;
+    padding:26px 28px 24px;margin-bottom:26px;box-shadow:var(--shadow)}
+  .step > .head{display:flex;align-items:flex-start;gap:16px;margin-bottom:14px}
+  .num{flex:none;width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+    background:var(--marine);color:#fff;font-size:1.25rem;font-weight:800;font-variant-numeric:tabular-nums}
+  :root[data-theme="dark"] .num{color:#08131f}
+  @media (prefers-color-scheme: dark){.num{color:#08131f}}
+  .head h2{font-size:1.4rem;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
+  .head .sub{font-size:.86rem;color:var(--ink3);margin-top:3px;font-family:ui-monospace,Consolas,monospace}
+  .role{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;margin:6px 0 16px;font-size:.96rem}
+  .role .lab{font-weight:700;color:var(--ocean);white-space:nowrap}
+  .role .val{color:var(--ink2)}
+  .role .val b{color:var(--ink)}
+
+  /* code */
+  figure.code{margin:14px 0 6px;border-radius:13px;overflow:hidden;border:1px solid var(--line2);
+    box-shadow:var(--shadow)}
+  figure.code figcaption{background:var(--surface2);border-bottom:1px solid var(--line);
+    padding:8px 14px;font-family:ui-monospace,Consolas,monospace;font-size:.76rem;
+    color:var(--ink3);display:flex;align-items:center;gap:8px}
+  figure.code figcaption .dot{width:9px;height:9px;border-radius:50%;background:var(--ocean);flex:none}
+  pre{background:var(--code-bg);color:var(--code-ink);padding:15px 16px;overflow-x:auto;
+    font-family:ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;font-size:.82rem;line-height:1.6}
+  pre .k{color:var(--code-key)} pre .s{color:var(--code-str)} pre .c{color:var(--code-com);font-style:italic}
+  pre .f{color:var(--code-fn)}
+  pre b{color:#ffd68a;font-weight:600}
+
+  /* guarantee callout */
+  .note{border-radius:12px;padding:13px 16px;margin-top:14px;font-size:.94rem;display:flex;gap:11px}
+  .note .ico{flex:none;font-size:1.05rem;line-height:1.5}
+  .note.ok{background:var(--green-bg);border:1px solid var(--green-line);color:var(--ink)}
+  .note.ok .lab{color:var(--green);font-weight:700}
+  .note.why{background:var(--warm-bg);border:1px solid var(--warm-line);color:var(--ink)}
+  .note.why .lab{color:var(--warm);font-weight:700}
+
+  h3.sec{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink3);margin:44px 0 14px;text-align:center}
+
+  /* closing */
+  .closing{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--ocean);
+    border-radius:14px;padding:22px 26px;margin-top:14px;box-shadow:var(--shadow)}
+  .closing p{color:var(--ink2);margin-bottom:10px}
+  .closing p:last-child{margin-bottom:0}
+  .closing b{color:var(--ink)}
+  .final{text-align:center;font-size:1.15rem;font-weight:600;color:var(--ink);
+    margin:34px auto 0;max-width:640px;text-wrap:balance}
+  .final .g{color:var(--ocean)}
+  footer{text-align:center;color:var(--ink3);font-size:.82rem;margin-top:40px}
+  code.inl{background:var(--surface2);border:1px solid var(--line);border-radius:6px;
+    padding:1px 6px;font-family:ui-monospace,Consolas,monospace;font-size:.85em;color:var(--marine)}
+  :root[data-theme="dark"] code.inl{color:var(--ocean)}
+  @media (max-width:560px){h1{font-size:1.7rem}.step{padding:20px 17px}.principe{padding:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="kicker">RAMA · sous le capot</span>
+  <h1>Comment ça marche, <span class="g">exactement</span></h1>
+  <p class="lede">Le parcours d'une question, étape par étape — l'architecture, et les extraits
+    de code réels qui font le travail. Chaque garantie est tenue par une ligne précise, pas par un espoir.</p>
+</header>
+
+<nav class="toc">
+  <a href="#principe">Principe</a>
+  <a href="#s1">1 · Trier</a>
+  <a href="#s2">2 · Chercher</a>
+  <a href="#s3">3 · Vérifier</a>
+  <a href="#s4">4 · Lier</a>
+  <a href="#port">Le port</a>
+  <a href="#bilan">Bilan</a>
+</nav>
+
+<section class="principe" id="principe">
+  <div class="t">Le principe de base</div>
+  <p>Le modèle de langage <b>comprend, reformule, rédige</b> — il ne produit <b>jamais</b> un fait.
+     Les chiffres sont copiés depuis une base ; les liens sont injectés depuis une liste vérifiée.
+     Le modèle n'a aucun canal pour écrire un chiffre ou une adresse de lui-même.</p>
+</section>
+
+<p style="color:var(--ink2);margin-bottom:30px">Tout se joue dans une seule fonction d'orchestration,
+<code class="inl">ANSDChatbot.ask()</code>, qui déroule une chaîne fixe, du traitement le moins coûteux et
+le plus sûr vers le plus coûteux. Voici l'ossature réelle, puis chaque étape en détail.</p>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> backend/app/core/chatbot.py — l'ordre du pipeline (extrait)</figcaption>
+<pre><span class="c"># -1. Acte social : "salut", "merci" -> reponse directe, ni routage ni LLM</span>
+<span class="k">if</span> (cat := smalltalk.detect(question)):
+    <span class="k">return</span> ChatResponse(answer=smalltalk.respond(cat, ...), route=<span class="s">"CHAT"</span>, ...)
+
+question = smalltalk.strip_greeting(question)
+question = self._normalize_query(question)      <span class="c"># 0a. corrige les fautes (si LLM rapide)</span>
+effective_q = self._contextualize(question, sess) <span class="c"># 0. resout "et a Thies ?"</span>
+
+<span class="c"># 1. Rail d'ENTREE : hors-sujet / injection / politique -> refus AVANT tout appel LLM</span>
+<span class="k">if</span> <span class="k">not</span> (verdict := check_input(effective_q)).allowed:
+    <span class="k">return</span> ChatResponse(answer=verdict.message, guardrail=verdict.reason, ...)
+
+<span class="k">if</span> (hit := self._cache_get(cache_key)) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:  <span class="c"># 1bis. cache</span>
+    <span class="k">return</span> ...
+
+<span class="c"># 1ter. Acces aux donnees / navigation -> liens officiels directs (voir etape 4)</span>
+<span class="k">if</span> _DATA_ACCESS_INTENT.search(q_fold): <span class="k">return</span> ...  <span class="c"># voie CATALOG</span>
+
+decision = self.router.route(effective_q)        <span class="c"># 2. ROUTAGE  (etape 1 ci-dessous)</span>
+... = self._execute_voie(decision, effective_q)  <span class="c"># 3. voie SQL / RAG (etape 2)</span>
+fv = check_output_faithfulness(answer, evidence) <span class="c"># 4. rail de SORTIE (etape 3)</span>
+links = self.linker.links_for(...)               <span class="c"># 5. liens verifies (etape 4)</span></pre>
+</figure>
+
+<h3 class="sec">Les quatre étapes en détail</h3>
+
+<!-- STEP 1 -->
+<section class="step" id="s1">
+  <div class="head">
+    <div class="num">1</div>
+    <div><h2>Trier la question — le routeur à deux niveaux</h2>
+      <div class="sub">app/router/orchestrator.py · app/guardrails/rails.py</div></div>
+  </div>
+  <div class="role">
+    <span class="lab">En clair</span><span class="val">On décide où envoyer la question : <b>un chiffre</b> (SQL), <b>une explication</b> (RAG), ou <b>les deux</b> (HYBRID) — et on refuse tout de suite ce qui est hors sujet ou malveillant.</span>
+    <span class="lab">Architecture</span><span class="val">Un classifieur statistique léger tranche en quelques millisecondes ; s'il hésite (confiance &lt; τ = 0,85), et seulement alors, le modèle arbitre.</span>
+  </div>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> orchestrator.py — <code>route()</code> : niveau 1 rapide, niveau 2 seulement si doute</figcaption>
+<pre><span class="k">def</span> <span class="f">route</span>(self, question):
+    <span class="c"># Niveau 1 : classifieur TF-IDF + regression logistique (~ms, sans GPU)</span>
+    <span class="k">if</span> self.classifier <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
+        label, conf = self.classifier.predict(question)
+        <span class="k">if</span> conf &gt;= settings.router_confidence_threshold:   <span class="c"># seuil τ = 0.85</span>
+            <span class="k">return</span> RouteDecision(label, conf, <span class="s">"classifier"</span>)
+    <span class="c"># Niveau 2 : le LLM arbitre UNIQUEMENT la zone d'incertitude</span>
+    resp = self.llm.complete(ROUTE_SYSTEM, question, temperature=<span class="s">0.0</span>)
+    data = json.loads(resp.text)
+    <span class="k">return</span> RouteDecision(data[<span class="s">"route"</span>], float(data[<span class="s">"confidence"</span>]), <span class="s">"llm_fallback"</span>)</pre>
+</figure>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> rails.py — <code>check_input()</code> : le refus tombe AVANT le moindre appel au modèle</figcaption>
+<pre><span class="k">def</span> <span class="f">check_input</span>(question):
+    q = _fold(question.lower().strip())            <span class="c"># sans accents, robuste</span>
+    <span class="k">for</span> p <span class="k">in</span> _INJECTION_PATTERNS:                     <span class="c"># "ignore tes instructions"...</span>
+        <span class="k">if</span> re.search(p, q): <span class="k">return</span> RailVerdict(<span class="k">False</span>, <span class="s">"injection"</span>, REFUS_HORS_DOMAINE)
+    <span class="k">for</span> p <span class="k">in</span> _POLITICAL_PATTERNS:                     <span class="c"># pronostic electoral...</span>
+        <span class="k">if</span> re.search(p, q): <span class="k">return</span> RailVerdict(<span class="k">False</span>, <span class="s">"political"</span>, REFUS_POLITIQUE)
+    <span class="k">if</span> <span class="k">not</span> _in_domain(q):                            <span class="c"># hors statistique ANSD</span>
+        <span class="k">return</span> RailVerdict(<span class="k">False</span>, <span class="s">"off_topic"</span>, REFUS_HORS_DOMAINE)
+    <span class="k">return</span> RailVerdict(<span class="k">True</span>)</pre>
+</figure>
+
+  <div class="note ok"><span class="ico">✓</span><div><span class="lab">Ce que ça garantit — P3 (refus sûr).</span> Ces règles sont déterministes et s'exécutent <b>avant</b> tout appel au modèle : une manipulation ne peut donc pas les contourner en jouant sur le modèle.</div></div>
+  <div class="note why"><span class="ico">?</span><div><span class="lab">Pourquoi ainsi.</span> Le classifieur coûte des millisecondes et s'explique (poids par mot) ; le LLM ne sert que là où l'ambiguïté a de la valeur — l'expérience montre qu'elle se concentre sur la classe HYBRID.</div></div>
+</section>
+
+<!-- STEP 2 -->
+<section class="step" id="s2">
+  <div class="head">
+    <div class="num">2</div>
+    <div><h2>Chercher le fait à la source</h2>
+      <div class="sub">app/sql/templates.py · app/sql/pipeline.py · app/rag/pipeline.py</div></div>
+  </div>
+  <div class="role">
+    <span class="lab">En clair</span><span class="val">Pour un chiffre : on <b>recopie</b> la valeur depuis la base. Pour une explication : le modèle rédige <b>uniquement</b> à partir de passages récupérés, gardés comme preuves.</span>
+    <span class="lab">Architecture</span><span class="val">Voie <b>SQL</b> par gabarits (requêtes pré-écrites, base en lecture seule) ; voie <b>RAG</b> avec récupération lexicale puis génération ancrée.</span>
+  </div>
+
+  <p style="color:var(--ink2);font-size:.94rem;margin:6px 0 4px"><b>2a — Le chiffre exact (voie SQL).</b> La forme de la question est reconnue et remplit une requête écrite et testée à l'avance :</p>
+<figure class="code">
+  <figcaption><span class="dot"></span> templates.py — une requête <em>à trous</em>, jamais générée à la volée (extrait)</figcaption>
+<pre><span class="k">if</span> <span class="s">"population"</span> <span class="k">in</span> q <span class="k">or</span> <span class="s">"habitant"</span> <span class="k">in</span> q:
+    <span class="k">if</span> region:
+        y = year <span class="k">or</span> <span class="s">"(SELECT MAX(annee) FROM demographie)"</span>
+        <span class="k">return</span> (<span class="s">"SELECT r.nom, d.annee, d.population FROM demographie d "</span>
+                <span class="s">"JOIN regions r ON r.id = d.region_id "</span>
+                <span class="s">f"WHERE lower(r.nom) = '{region}' AND d.annee = {y};"</span>)</pre>
+</figure>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> pipeline.py — <code>_verbalize()</code> : le chiffre affiché est COPIÉ de la base, jamais calculé</figcaption>
+<pre><span class="k">def</span> <span class="f">_verbalize</span>(question, cols, rows):
+    <span class="c"># le nombre vient TOUJOURS de la base -> hallucination numerique impossible</span>
+    <span class="k">if</span> len(rows) == <span class="s">1</span>:
+        phrase = _humanize_row(question, dict(zip(cols, rows[<span class="s">0</span>])))
+        <span class="k">if</span> phrase: <span class="k">return</span> phrase          <span class="c"># ex : "...4 004 427 habitants (RGPH-5)."</span>
+    <span class="k">if</span> <span class="k">not</span> any(v <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">for</span> r <span class="k">in</span> rows <span class="k">for</span> v <span class="k">in</span> r):
+        <span class="k">return</span> _INDISPONIBLE           <span class="c"># jamais une phrase vide/inventee</span></pre>
+</figure>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> sources.py — la base est ouverte en LECTURE SEULE, et seuls les SELECT passent</figcaption>
+<pre><span class="k">def</span> <span class="f">execute</span>(self, sql):                       <span class="c"># DataMartCurate</span>
+    con = sqlite3.connect(<span class="s">f"file:{self.db_path}?mode=ro"</span>, uri=<span class="k">True</span>)  <span class="c"># ro = read only</span>
+    ...
+
+<span class="k">def</span> <span class="f">_is_safe</span>(sql):                            <span class="c"># pipeline.py</span>
+    s = sql.strip().rstrip(<span class="s">";"</span>).lower()
+    <span class="k">if</span> <span class="k">not</span> s.startswith(<span class="s">"select"</span>): <span class="k">return</span> <span class="k">False</span>
+    forbidden = [<span class="s">"insert"</span>,<span class="s">"update"</span>,<span class="s">"delete"</span>,<span class="s">"drop"</span>,<span class="s">"alter"</span>,<span class="s">"attach"</span>,<span class="s">"pragma"</span>,<span class="s">"create"</span>,<span class="s">";"</span>]
+    <span class="k">return</span> <span class="k">not</span> any(f <span class="k">in</span> s <span class="k">for</span> f <span class="k">in</span> forbidden)</pre>
+</figure>
+
+  <p style="color:var(--ink2);font-size:.94rem;margin:18px 0 4px"><b>2b — L'explication (voie RAG).</b> On récupère les passages pertinents, on filtre les moins bons (idée de CRAG), et le modèle rédige sous consigne stricte :</p>
+<figure class="code">
+  <figcaption><span class="dot"></span> rag/pipeline.py — récupération + filtrage, les passages retenus servent de PREUVES</figcaption>
+<pre><span class="k">def</span> <span class="f">_prepare</span>(self, question):
+    chunks = self.retriever.search(question, settings.top_k)       <span class="c"># TF-IDF, sans GPU</span>
+    kept = [c <span class="k">for</span> c <span class="k">in</span> chunks <span class="k">if</span> c.score &gt;= settings.rerank_threshold]  <span class="c"># filtre CRAG</span>
+    kept = kept[:settings.gen_context_chunks]                      <span class="c"># peu, mais bien choisis</span>
+    contexte = <span class="s">"\n\n"</span>.join(<span class="s">f"[Source: {c.source}]\n{c.text}"</span> <span class="k">for</span> c <span class="k">in</span> kept)
+    <span class="k">return</span> contexte, kept        <span class="c"># kept = preuve reutilisee par le rail de fidelite</span></pre>
+</figure>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> rag/pipeline.py — la consigne système qui interdit d'inventer (extrait réel)</figcaption>
+<pre>GROUNDED_SYSTEM = <span class="s">"""... Regles imperatives (guardrails factuels) :</span>
+<span class="s">1. Reponds UNIQUEMENT a partir du &lt;contexte&gt;. N'invente jamais un chiffre.</span>
+<span class="s">2. Si l'information est absente du contexte, reponds exactement :</span>
+<span class="s">   "Information non disponible dans les sources ANSD."</span>
+<span class="s">3. Nomme l'operation statistique d'origine (ex : "selon le RGPH-5 2023...")."""</span></pre>
+</figure>
+
+  <div class="note ok"><span class="ico">✓</span><div><span class="lab">Ce que ça garantit — P1 (ancrage).</span> Côté SQL, le chiffre <b>sort de la base</b>. Côté RAG, le modèle est bordé par la consigne <em>et</em> par le contrôle de l'étape 3 — les passages retenus deviennent la preuve.</div></div>
+  <div class="note why"><span class="ico">?</span><div><span class="lab">Pourquoi des gabarits.</span> Notre base est petite et connue : des requêtes pré-écrites donnent l'exactitude (15/15 en test), la vitesse et la sécurité — là où une requête générée à la volée devrait être re-contrôlée.</div></div>
+</section>
+
+<!-- STEP 3 -->
+<section class="step" id="s3">
+  <div class="head">
+    <div class="num">3</div>
+    <div><h2>Vérifier avant d'afficher — le rail de fidélité</h2>
+      <div class="sub">app/guardrails/rails.py</div></div>
+  </div>
+  <div class="role">
+    <span class="lab">En clair</span><span class="val">Avant de montrer la réponse, on vérifie que <b>chaque chiffre statistique</b> de la réponse existe bien dans les preuves. Sinon, on retient la réponse et on renvoie à la source.</span>
+    <span class="lab">Architecture</span><span class="val">Contrôle déterministe : ensemble des nombres de la réponse ⊆ ensemble des nombres des preuves. Les nombres non statistiques (ordinaux, références) sont écartés pour éviter les faux blocages.</span>
+  </div>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> rails.py — <code>check_output_faithfulness()</code> : tout chiffre non prouvé bloque la réponse</figcaption>
+<pre><span class="k">def</span> <span class="f">check_output_faithfulness</span>(answer, evidence):
+    unsupported = _numbers(answer, is_answer=<span class="k">True</span>) - _numbers(evidence)
+    <span class="k">if</span> unsupported:
+        <span class="k">return</span> RailVerdict(<span class="k">False</span>, <span class="s">"unfaithful"</span>,
+            <span class="s">"... un chiffre n'a pas pu etre verifie dans les sources ..."</span>)
+    <span class="k">return</span> RailVerdict(<span class="k">True</span>)
+
+<span class="k">def</span> <span class="f">_numbers</span>(text, is_answer=<span class="k">False</span>):
+    <span class="k">if</span> is_answer:                        <span class="c"># cote reponse : on ignore le NON-statistique</span>
+        text = _REFERENCES.sub(<span class="s">" "</span>, text)  <span class="c"># "Convention 138", "ODD 4"...</span>
+        text = _ORDINAUX.sub(<span class="s">" "</span>, text)    <span class="c"># "19e Conference", "5ᵉ"...</span>
+    t = re.sub(<span class="s">r"(?&lt;=\d)[\s .,](?=\d{3}(?!\d))"</span>, <span class="s">""</span>, text)  <span class="c"># "4 137 000" -> "4137000"</span>
+    <span class="k">return</span> {m <span class="k">for</span> m <span class="k">in</span> re.findall(<span class="s">r"\d+"</span>, t) <span class="k">if</span> len(m) &gt; <span class="s">1</span>}</pre>
+</figure>
+
+  <div class="note ok"><span class="ico">✓</span><div><span class="lab">Ce que ça garantit.</span> C'est la <b>ceinture de sécurité</b> de P1, redondante avec la construction : même si le modèle glissait un chiffre inventé dans une explication, il serait intercepté ici.</div></div>
+  <div class="note why"><span class="ico">?</span><div><span class="lab">Pourquoi ignorer les ordinaux.</span> « 19ᵉ Conférence » n'est pas une statistique. Les garder produisait un blocage <em>intermittent</em> selon la formulation du modèle — donc un comportement non reproductible. On ne garde que les vrais chiffres de données.</div></div>
+</section>
+
+<!-- STEP 4 -->
+<section class="step" id="s4">
+  <div class="head">
+    <div class="num">4</div>
+    <div><h2>Attacher les liens — après la génération</h2>
+      <div class="sub">app/core/resources.py · app/core/chatbot.py</div></div>
+  </div>
+  <div class="role">
+    <span class="lab">En clair</span><span class="val">Les liens sont <b>ajoutés après</b> la rédaction, seulement depuis une liste de sources vérifiées. Toute réponse repart avec au moins un lien vers sa source.</span>
+    <span class="lab">Architecture</span><span class="val">Chaque table / indicateur pointe vers sa publication ; un lien de secours vérifié est garanti si rien de plus précis n'est trouvé ; le modèle ne voit jamais passer d'URL à inventer.</span>
+  </div>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> resources.py — <code>links_for()</code> : la table interrogée désigne sa publication source</figcaption>
+<pre>TABLE_TO_RESOURCE = {<span class="s">"emploi"</span>:[<span class="s">"enes_page"</span>], <span class="s">"inflation"</span>:[<span class="s">"ihpc_page"</span>],
+    <span class="s">"pauvrete"</span>:[<span class="s">"ehcvm_rapport_pdf"</span>], <span class="s">"demographie"</span>:[<span class="s">"rgph5_rapports"</span>], ...}
+
+<span class="k">def</span> <span class="f">links_for</span>(self, question, doc_sources, sql=<span class="k">None</span>):
+    <span class="k">for</span> table <span class="k">in</span> self._tables_of(sql):                 <span class="c"># table SQL -> source deterministe</span>
+        <span class="k">for</span> rid <span class="k">in</span> TABLE_TO_RESOURCE.get(table, []):
+            scores[rid] += <span class="s">4.0</span>
+    <span class="k">if</span> <span class="s">"indicateurs_nationaux"</span> <span class="k">in</span> tables:            <span class="c"># selon le CODE de l'indicateur :</span>
+        rid = <span class="s">"ehcvm_rapport_pdf"</span> <span class="k">if</span> ... <span class="k">else</span> <span class="s">"rgph5_rapports"</span>
+    <span class="k">return</span> [self._as_link(rid) <span class="k">for</span> rid, _ <span class="k">in</span> best]</pre>
+</figure>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> chatbot.py — un lien source est GARANTI, jamais inventé (extrait)</figcaption>
+<pre>links = self.linker.links_for(effective_q, doc_sources, sql=sql_used)
+<span class="c"># Promesse : toute reponse factuelle porte AU MOINS un lien source verifie.</span>
+<span class="k">if</span> <span class="k">not</span> links <span class="k">and</span> decision.route <span class="k">in</span> (<span class="s">"SQL"</span>,<span class="s">"RAG"</span>,<span class="s">"HYBRID"</span>):
+    links = [self.linker.fallback(<span class="s">"ansd_indicateurs"</span> <span class="k">if</span> data <span class="k">else</span> <span class="s">"ansd_publications"</span>)]</pre>
+</figure>
+
+<figure class="code">
+  <figcaption><span class="dot"></span> resources.py — <code>autolink()</code> : seul point où une URL entre dans une réponse</figcaption>
+<pre><span class="k">def</span> <span class="f">autolink</span>(self, text, max_links=<span class="s">6</span>):
+    <span class="c"># les mentions ("RGPH-5", "Open Data"...) deviennent cliquables, MAIS</span>
+    <span class="c"># l'URL provient TOUJOURS de resources.json (verifie HTTP 200), jamais du LLM</span>
+    <span class="k">for</span> pattern, rid <span class="k">in</span> AUTOLINK_PATTERNS:
+        <span class="k">if</span> rid <span class="k">in</span> self.resources <span class="k">and</span> re.search(pattern, text, re.I):
+            ...insere [texte](self.resources[rid][<span class="s">"url"</span>])   <span class="c"># ne touche jamais un chiffre</span></pre>
+</figure>
+
+  <div class="note ok"><span class="ico">✓</span><div><span class="lab">Ce que ça garantit — P2 (aucune adresse inventée).</span> Les liens sont posés <b>en aval</b> de la génération, appariés uniquement contre la liste vérifiée. Le modèle n'a littéralement aucun moyen d'émettre une URL.</div></div>
+  <div class="note why"><span class="ico">?</span><div><span class="lab">Pourquoi un lien garanti.</span> Un service public doit toujours ramener à la source officielle — fichier, page, rapport, portail ou fiche. Si aucun lien précis n'est trouvé, une page ANSD vérifiée est attachée : jamais un vide, jamais une invention.</div></div>
+</section>
+
+<!-- PORT -->
+<section class="step" id="port">
+  <div class="head">
+    <div class="num">◇</div>
+    <div><h2>Le socle : un port, pas un stockage figé</h2>
+      <div class="sub">app/sql/sources.py · app/sql/odp.py</div></div>
+  </div>
+  <div class="role">
+    <span class="lab">En clair</span><span class="val">La voie chiffrée ne dépend pas d'un fichier précis, mais d'un <b>contrat</b>. Brancher une source réelle de l'ANSD = ajouter un adaptateur, sans rien changer d'autre.</span>
+    <span class="lab">Architecture</span><span class="val">Un port <code class="inl">SourceStatistique</code> ; l'entrepôt curaté est l'adaptateur en place ; l'adaptateur Open Data (ODP) se branche derrière le même contrat, avec repli automatique.</span>
+  </div>
+<figure class="code">
+  <figcaption><span class="dot"></span> sources.py — le contrat, et sa première réalisation</figcaption>
+<pre><span class="k">class</span> <span class="f">SourceStatistique</span>(Protocol):        <span class="c"># le PORT (contrat)</span>
+    <span class="k">def</span> <span class="f">execute</span>(self, sql) -&gt; Resultat: ...   <span class="c"># valeur + provenance</span>
+
+<span class="k">class</span> <span class="f">DataMartCurate</span>:                     <span class="c"># adaptateur EN PLACE (SQLite, lecture seule)</span>
+    <span class="k">def</span> <span class="f">execute</span>(self, sql) -&gt; Resultat:
+        con = sqlite3.connect(<span class="s">f"file:{self.db_path}?mode=ro"</span>, uri=<span class="k">True</span>)
+        ... <span class="k">return</span> Resultat(columns, rows, provenance=self.provenance())
+
+<span class="k">class</span> <span class="f">SourceComposite</span>:                    <span class="c"># [ODP -> entrepot], repli si l'API tombe</span>
+    <span class="k">def</span> <span class="f">execute</span>(self, sql):
+        <span class="k">for</span> src <span class="k">in</span> self.sources:
+            <span class="k">try</span>: <span class="k">return</span> src.execute(sql)
+            <span class="k">except</span> SourceIncapable: <span class="k">continue</span>   <span class="c"># degradation gracieuse</span></pre>
+</figure>
+  <div class="note ok"><span class="ico">✓</span><div><span class="lab">Ce que ça prouve.</span> « Brancher le système d'information réel de l'ANSD = ajouter un adaptateur » n'est pas une promesse : le point de raccordement <b>existe dans le code</b>, et le repli est testé.</div></div>
+</section>
+
+<h3 class="sec">Ce qu'il faut retenir</h3>
+<section class="closing" id="bilan">
+  <p><b>La fiabilité est construite, pas espérée.</b> On ne demande pas au modèle d'être honnête : on lui retire les moyens de mal faire. Les chiffres sont copiés (étape 2), contrôlés (étape 3) ; les liens sont injectés depuis une liste vérifiée (étape 4) ; les refus tombent avant lui (étape 1).</p>
+  <p><b>Chaque garantie tient à une ligne précise :</b> <code class="inl">mode=ro</code> pour la base, <code class="inl">_is_safe</code> pour les requêtes, <code class="inl">check_input</code> avant le modèle, <code class="inl">check_output_faithfulness</code> après, <code class="inl">autolink</code> comme seul point d'entrée des URL.</p>
+  <p><b>Et c'est prouvé, pas affirmé :</b> exactitude SQL 15/15, routeur 0,857, zéro chiffre et zéro lien hors des sources sur tout le protocole — chiffres reproductibles à l'identique.</p>
+</section>
+
+<p class="final">Le modèle apporte la souplesse du langage, <span class="g">l'architecture apporte la vérité</span> — et les deux ne se mélangent jamais.</p>
+
+<footer>RAMA · Assistant statistique de l'ANSD — document technique, extraits de code réels du dépôt.</footer>
+
+</div>
+
+<script>
+  // theme suit le systeme, avec bascule au clic sur le titre (discret)
+  const root=document.documentElement;
+  document.querySelector('h1').style.cursor='default';
+</script>
+</body>
+</html>

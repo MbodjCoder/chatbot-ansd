@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0e79c4">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>À propos & confidentialité — RAMA</title>
+<style>
+  :root{--enc:#0a2440;--enc2:#3f5972;--acc:#0e79c4;--acc2:#0b2f5c;--pap:#f4f8fc;--carte:#fff;--lig:#dce7f2}
+  @media (prefers-color-scheme:dark){:root{--enc:#e6f0fb;--enc2:#a3b8d0;--pap:#08121f;--carte:#101d2e;--lig:#213649;--acc:#3fa4e6}}
+  *{box-sizing:border-box;margin:0}
+  body{font-family:"Inter","Segoe UI",system-ui,sans-serif;background:var(--pap);color:var(--enc);line-height:1.65}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 22px 80px}
+  a{color:var(--acc);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  header svg{width:40px;height:38px;flex:none}
+  h1{font-size:1.5rem;letter-spacing:-.01em}
+  .sub{color:var(--enc2);margin-bottom:30px;font-size:.95rem}
+  h2{font-size:1.1rem;margin:28px 0 8px;color:var(--acc2)}
+  @media (prefers-color-scheme:dark){h2{color:var(--acc)}}
+  p,li{color:var(--enc2)}
+  ul{margin:6px 0 0 20px}
+  .carte{background:var(--carte);border:1px solid var(--lig);border-radius:14px;padding:18px 20px;margin-top:14px}
+  .retour{display:inline-block;margin-top:34px;background:var(--acc);color:#fff;padding:10px 18px;border-radius:11px;font-weight:600}
+  .retour:hover{text-decoration:none;opacity:.92}
+  footer{margin-top:40px;color:var(--enc2);font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg viewBox="0 0 50 46" aria-hidden="true">
+      <rect x="5" y="3" width="22" height="22" fill="#1b3f8f"/>
+      <rect x="10" y="8" width="22" height="22" fill="#5a9bd0"/>
+      <rect x="15" y="13" width="22" height="22" fill="#abd5e8"/>
+      <ellipse cx="25" cy="25" rx="24" ry="4.6" fill="none" stroke="#1b3f8f" stroke-width="1.5" transform="rotate(-10 25 25)"/>
+      <polyline points="8,30 18,16 22,24 26,18 42,5" fill="none" stroke="#1b3f8f" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>RAMA — À propos &amp; confidentialité</h1>
+  </header>
+  <p class="sub">Assistant conversationnel d'accès aux statistiques officielles du Sénégal (ANSD).</p>
+
+  <h2>Ce qu'est RAMA</h2>
+  <p>RAMA aide à trouver un chiffre officiel, à comparer, à comprendre une méthode et à
+     atteindre le bon document. Les réponses s'appuient sur les données et publications
+     de l'<strong>ANSD</strong> (Agence Nationale de la Statistique et de la Démographie),
+     son archive de microdonnées <strong>ANADS</strong>, la <strong>Situation Économique et
+     Sociale (SES)</strong> et des portails partenaires.</p>
+
+  <h2>Sources &amp; fiabilité</h2>
+  <div class="carte">
+    <ul>
+      <li>Chaque chiffre provient d'une base officielle ; aucun nombre n'est inventé.</li>
+      <li>Les liens pointent vers des ressources <strong>vérifiées</strong> ; les URLs ne sont jamais fabriquées.</li>
+      <li>Un garde-fou de fidélité vérifie que les chiffres d'une réponse sont couverts par ses sources.</li>
+      <li>Les questions hors périmètre (opinions, politique, prédictions) sont poliment refusées.</li>
+    </ul>
+  </div>
+
+  <h2>Limites</h2>
+  <p>RAMA ne remplace pas la consultation des publications officielles pour un usage
+     juridique ou de recherche. La couverture dépend des données publiées par l'ANSD ;
+     certaines questions très fines renvoient vers le document source plutôt qu'un chiffre.</p>
+
+  <h2>Confidentialité</h2>
+  <div class="carte">
+    <ul>
+      <li>Aucun compte, aucune donnée personnelle demandée.</li>
+      <li>Les conversations restent dans votre navigateur (stockage local) ; vous pouvez les effacer à tout moment.</li>
+      <li>Le service journalise des interactions <strong>anonymes</strong> (question, voie, latence) pour améliorer la qualité — sans identifiant personnel.</li>
+      <li>Aucun traceur publicitaire, aucun partage à des tiers.</li>
+    </ul>
+  </div>
+
+  <h2>Contact</h2>
+  <p>Pour l'ANSD : <a href="https://www.ansd.sn/contact" target="_blank" rel="noopener">formulaire officiel</a>
+     · site <a href="https://www.ansd.sn/" target="_blank" rel="noopener">www.ansd.sn</a>.</p>
+
+  <a class="retour" href="/">← Revenir à RAMA</a>
+  <footer>Prototype de mémoire de master — Université Gaston Berger. Données © ANSD.</footer>
+</div>
+</body>
+</html>

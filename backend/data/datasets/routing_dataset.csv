@@ -1,0 +1,329 @@
+question,label
+Quelle est la population du Senegal en 2023 ?,SQL
+Combien d'habitants compte la region de Dakar ?,SQL
+Quel est le taux de chomage en 2024 ?,SQL
+Donne-moi le taux d'inflation de 2022,SQL
+Quelle region a le taux de pauvrete le plus eleve ?,SQL
+Population de Thies en 2013,SQL
+Combien de regions compte le Senegal ?,SQL
+Quel etait le taux d'activite en 2020 ?,SQL
+Classe les regions par population decroissante,SQL
+Quelle est la superficie de la region de Matam ?,SQL
+Evolution de la population de Saint-Louis entre 2013 et 2023,SQL
+Taux de chomage moyen entre 2019 et 2024,SQL
+Quelle annee a connu la plus forte inflation ?,SQL
+Population totale du pays en 2024,SQL
+Quel est le chef-lieu de la region de Kolda ?,SQL
+Compare la population de Dakar et de Thies en 2023,SQL
+Quel est le taux de pauvrete a Kedougou ?,SQL
+Combien d'habitants a Ziguinchor ?,SQL
+Donne le taux d'inflation le plus recent,SQL
+Les trois regions les plus peuplees en 2023,SQL
+Taux de chomage en 2021 s'il te plait,SQL
+Quelle est la densite de population de Dakar ?,SQL
+Somme de la population des regions du sud,SQL
+Quelle region est la moins peuplee ?,SQL
+Le taux de pauvrete de la region de Fatick,SQL
+Inflation moyenne sur les cinq dernieres annees,SQL
+Quelle etait la population de Diourbel en 2023 ?,SQL
+Combien y a-t-il d'habitants a Kaffrine ?,SQL
+Le chomage a-t-il baisse entre 2021 et 2024 ?,SQL
+Quel est le taux d'activite le plus recent ?,SQL
+Montre-moi la population par region pour 2024,SQL
+Quelle region a la plus grande superficie ?,SQL
+Taux de pauvrete moyen national,SQL
+Population de Louga en 2013 et 2023,SQL
+Quel a ete le pic d'inflation ?,SQL
+Nombre d'habitants de la region de Sedhiou en 2024,SQL
+Qu'est-ce que le RGPH-5 ?,RAG
+Comment l'ANSD mesure-t-elle la pauvrete ?,RAG
+Quelle est la methodologie de l'enquete EHCVM ?,RAG
+Definition du taux de chomage au sens du BIT,RAG
+Comment est calcule l'indice des prix a la consommation ?,RAG
+Quelles sont les missions de l'ANSD ?,RAG
+Explique la difference entre chomage strict et chomage elargi,RAG
+Qu'est-ce que l'IHPC ?,RAG
+Comment s'est deroule le recensement de 2023 ?,RAG
+Quel est le cadre juridique de l'ANSD ?,RAG
+Qu'est-ce que la pauvrete monetaire ?,RAG
+Comment sont collectees les donnees du recensement ?,RAG
+Quelles publications produit l'ANSD ?,RAG
+Explique la methode d'echantillonnage de l'EHCVM,RAG
+Qu'est-ce que l'enquete ENES ?,RAG
+Pourquoi l'inflation a-t-elle augmente en 2022 ?,RAG
+Comment le seuil de pauvrete est-il defini ?,RAG
+Qu'est-ce que la classification COICOP ?,RAG
+Quels sont les principes fondamentaux de la statistique officielle ?,RAG
+Comment l'ANSD protege-t-elle la confidentialite des donnees ?,RAG
+Explique la formule de Laspeyres utilisee pour l'IHPC,RAG
+Quelle est la difference entre le RGPH-4 et le RGPH-5 ?,RAG
+Qu'est-ce qu'un district de recensement ?,RAG
+Comment sont ponderes les prix dans l'IHPC ?,RAG
+Qui assure la tutelle de l'ANSD ?,RAG
+Qu'est-ce que la Situation Economique et Sociale du Senegal ?,RAG
+Comment l'ANSD mesure-t-elle le sous-emploi ?,RAG
+Explique le concept de population active,RAG
+Que signifie CAPI dans le recensement ?,RAG
+Comment sont realises les releves de prix ?,RAG
+Qu'est-ce que le taux d'activite ?,RAG
+Pourquoi le secteur informel complique-t-il la mesure de l'emploi ?,RAG
+Quelles enquetes menages l'ANSD realise-t-elle ?,RAG
+Qu'est-ce que le bulletin mensuel des statistiques economiques ?,RAG
+Comment la cartographie censitaire est-elle realisee ?,RAG
+Quel est le taux de chomage en 2023 et comment est-il mesure ?,HYBRID
+Donne la population de Dakar en 2023 et explique la methodologie du recensement,HYBRID
+Quel est le taux de pauvrete a Sedhiou et comment l'EHCVM le calcule-t-elle ?,HYBRID
+Quelle a ete l'inflation en 2022 et pourquoi une telle hausse ?,HYBRID
+Compare le chomage 2020 et 2024 et explique les concepts utilises,HYBRID
+Population du Senegal en 2023 et deroulement du RGPH-5,HYBRID
+Taux d'inflation 2023 avec la methode de calcul de l'indice,HYBRID
+Quel est le taux de pauvrete national et que signifie la pauvrete monetaire ?,HYBRID
+Donne le taux d'activite 2024 et definis ce concept,HYBRID
+Classement des regions par pauvrete avec l'explication de la mesure,HYBRID
+Quelle region est la plus peuplee et comment le recensement a-t-il ete conduit ?,HYBRID
+Evolution de l'inflation depuis 2019 et facteurs explicatifs,HYBRID
+Chiffres du chomage des dernieres annees et definition du BIT,HYBRID
+Population de Ziguinchor en 2023 et methodologie de projection,HYBRID
+Taux de pauvrete de Kedougou et methode d'echantillonnage de l'enquete,HYBRID
+Donne l'inflation de 2024 et explique la nomenclature utilisee,HYBRID
+Combien d'habitants au Senegal et quelles sont les missions de l'ANSD ?,HYBRID
+Taux de chomage eleve chez les jeunes : chiffres et explication,HYBRID
+Population par region en 2023 et principes du denombrement exhaustif,HYBRID
+Quel est le taux de pauvrete de Kolda et pourquoi est-il si eleve ?,HYBRID
+Quelle est la croissance du PIB en 2024 ?,SQL
+Donne-moi la croissance economique de 2023,SQL
+Le PIB a-t-il progresse entre 2022 et 2024 ?,SQL
+Quelle est l'esperance de vie au Senegal ?,SQL
+Esperance de vie des femmes en 2023,SQL
+Quel est l'indice synthetique de fecondite ?,SQL
+Combien d'enfants par femme en moyenne au Senegal ?,SQL
+Quel est le taux d'urbanisation du pays ?,SQL
+Quelle est la densite de population nationale ?,SQL
+Combien de menages compte le Senegal ?,SQL
+Quelle est la taille moyenne des menages ?,SQL
+Quel est l'indice de Gini du Senegal ?,SQL
+Indice de Gini de la region de Kaolack,SQL
+Quelle region a les inegalites les plus fortes ?,SQL
+Consommation moyenne par tete a Dakar,SQL
+Quel est le taux d'extreme pauvrete ?,SQL
+Taux de pauvrete en milieu rural,SQL
+Le taux de pauvrete urbain du Senegal,SQL
+Quel etait le taux de chomage au premier trimestre 2025 ?,SQL
+Taux de chomage au troisieme trimestre 2024,SQL
+Le chomage au sens du BIT le plus recent,SQL
+Population du Senegal au recensement de 1988,SQL
+Combien d'habitants comptait le pays en 1976 ?,SQL
+Evolution de la population nationale depuis 1976,SQL
+Quel etait l'effectif de la population en 2002 ?,SQL
+De combien la population a-t-elle augmente entre 2013 et 2023 ?,SQL
+Quel est le taux de croissance demographique annuel ?,SQL
+Part des moins de 15 ans dans la population,SQL
+Quel pourcentage de menages a acces a l'electricite ?,SQL
+Proportion de menages avec un robinet a domicile,SQL
+Quel est le taux de prevalence du handicap ?,SQL
+Part des menages agricoles au Senegal,SQL
+Taux brut de scolarisation au primaire,SQL
+Superficie de la region de Tambacounda,SQL
+Quelle est la superficie du Senegal ?,SQL
+Densite de population de la region de Thies,SQL
+Les cinq regions les moins denses,SQL
+Population de Matam au dernier recensement,SQL
+Habitants de la region de Fatick en 2013,SQL
+Compare la pauvrete de Dakar et de Sedhiou,SQL
+Difference de population entre Kaolack et Louga,SQL
+Quelles regions depassent un million d'habitants ?,SQL
+Classement des regions par superficie,SQL
+Le taux d'inflation de 2020,SQL
+Inflation de l'annee 2019,SQL
+Quelle annee a eu l'inflation la plus basse ?,SQL
+Liste des taux de chomage trimestriels de 2024,SQL
+Le chomage du deuxieme trimestre 2023,SQL
+Donne les chiffres du chomage pour tous les trimestres de 2023,SQL
+Combien de personnes vivaient a Kedougou en 2023 ?,SQL
+Nombre d'habitants du pays au dernier recensement,SQL
+Quel est le chef-lieu de Kaffrine ?,SQL
+Profondeur de la pauvrete a Tambacounda,SQL
+Severite de la pauvrete par region,SQL
+Taux de pauvrete des 14 regions,SQL
+Ou en est la croissance economique du Senegal ?,SQL
+La croissance du PIB de 2022,SQL
+Quel age median a la population senegalaise ?,SQL
+Montre l'evolution du chomage entre 2023 et 2025,SQL
+Le taux d'activite du deuxieme trimestre 2024,SQL
+Population cumulee de Dakar et Thies,SQL
+Quelle region a le plus faible taux de pauvrete ?,SQL
+Comment naviguer sur le site de l'ANSD ?,RAG
+Ou trouver les rapports du RGPH-5 sur le site ?,RAG
+Comment telecharger les publications de l'ANSD ?,RAG
+Comment contacter l'ANSD ?,RAG
+Quelle est l'adresse du siege de l'ANSD ?,RAG
+Comment acceder aux microdonnees des enquetes ?,RAG
+Qu'est-ce que le portail ANADS ?,RAG
+Ou consulter les resultats interactifs du recensement ?,RAG
+Comment demander des donnees a l'ANSD ?,RAG
+Ou trouver les notes trimestrielles sur l'emploi ?,RAG
+Dans quelle rubrique du site trouve-t-on l'inflation ?,RAG
+Ou sont publiees les donnees regionales ?,RAG
+Qu'est-ce que la Banque de Donnees Economiques et Financieres ?,RAG
+Qu'est-ce que l'indice de Gini ?,RAG
+Que signifie l'extreme pauvrete ?,RAG
+Comment definit-on l'insecurite alimentaire ?,RAG
+Qu'est-ce que l'incidence de la pauvrete ?,RAG
+Que mesurent la profondeur et la severite de la pauvrete ?,RAG
+Comment les comptes nationaux sont-ils elabores ?,RAG
+Qu'est-ce que le SCN 2008 ?,RAG
+Quels sont les trois secteurs de l'economie ?,RAG
+Pourquoi la croissance a-t-elle accelere en 2024 ?,RAG
+Quel role joue le petrole dans l'economie senegalaise ?,RAG
+Qu'est-ce que l'UEMOA ?,RAG
+Quelle est la parite du franc CFA avec l'euro ?,RAG
+Qu'est-ce que l'enquete post-censitaire ?,RAG
+A quoi sert la plateforme PIGOR ?,RAG
+Comment la fecondite a-t-elle evolue depuis 2002 ?,RAG
+Pourquoi la fecondite baisse-t-elle dans les regions urbanisees ?,RAG
+Que revele le RGPH-5 sur les migrations internationales ?,RAG
+Quels sont les principaux pays de destination des emigrants ?,RAG
+Que dit le recensement sur l'etat civil ?,RAG
+Comment le handicap est-il mesure dans le recensement ?,RAG
+Qu'est-ce qu'un menage ordinaire ?,RAG
+Quelle difference entre menage ordinaire et menage collectif ?,RAG
+Que sait-on des menages agricoles ?,RAG
+Comment l'acces a l'eau potable a-t-il evolue ?,RAG
+Quels combustibles de cuisson utilisent les menages ?,RAG
+Qu'est-ce que l'EDS ?,RAG
+Qu'est-ce que l'ENSAE Pierre Ndiaye ?,RAG
+Quelles sont les vagues de collecte de l'EHCVM II ?,RAG
+Combien de menages ont ete enquetes par l'EHCVM II ?,RAG
+Pourquoi le nombre de pauvres augmente malgre la baisse du taux ?,RAG
+Quelles regions contribuent le plus a la pauvrete nationale ?,RAG
+Comment la pauvrete varie-t-elle avec la taille du menage ?,RAG
+Que depensent les menages pauvres pour l'alimentation ?,RAG
+Qui dirige la politique monetaire du Senegal ?,RAG
+Quels sont les produits d'exportation du Senegal ?,RAG
+Que signifie le rebasement de l'IHPC en base 2023 ?,RAG
+Pourquoi l'inflation a-t-elle recule en 2024 ?,RAG
+Comment fonctionne la remontee des donnees du recensement ?,RAG
+Qu'est-ce que le taux brut de scolarisation ?,RAG
+Que dit le RGPH-5 sur la formation professionnelle ?,RAG
+Explique le concept de taux d'emploi,RAG
+Pourquoi utilise-t-on un taux de chomage elargi au Senegal ?,RAG
+Comment sont definies les personnes decouragees ?,RAG
+Le chomage touche-t-il plus les femmes ou les hommes ?,RAG
+Quelles sont les regions les plus touchees par l'insecurite alimentaire ?,RAG
+Que pensent les Senegalais de la corruption ?,RAG
+Ou se trouve le repertoire des localites ?,RAG
+Comment citer les donnees de l'ANSD ?,RAG
+Qu'est-ce qu'un SRSD ?,RAG
+Comment fonctionne la pyramide des ages du Senegal ?,RAG
+Quelle croissance du PIB en 2024 et quels en sont les moteurs ?,HYBRID
+Donne l'esperance de vie actuelle et explique son evolution,HYBRID
+Quel est l'indice de fecondite et pourquoi varie-t-il selon les regions ?,HYBRID
+Taux d'urbanisation 2023 et dynamique de l'urbanisation,HYBRID
+Quel est l'indice de Gini national et comment l'interpreter ?,HYBRID
+Taux d'extreme pauvrete et definition de ce concept,HYBRID
+Chomage du premier trimestre 2025 avec la distinction BIT et elargi,HYBRID
+Population de 1976 a 2023 et enseignements de cette evolution,HYBRID
+Densite de Dakar et consequences de la concentration urbaine,HYBRID
+Nombre de menages au Senegal et definition du menage ordinaire,HYBRID
+Part des menages agricoles et caracteristiques de ces menages,HYBRID
+Taux de scolarisation au primaire et disparites regionales,HYBRID
+Donne la croissance demographique et explique le doublement de la population,HYBRID
+Pauvrete rurale contre urbaine : chiffres et explications,HYBRID
+Consommation moyenne par tete a Sedhiou et analyse des disparites,HYBRID
+Quelle region est la plus pauvre et quelles en sont les causes ?,HYBRID
+Compare l'inflation 2022 et 2024 en expliquant les facteurs,HYBRID
+Chiffre du chomage des femmes et analyse des inegalites de genre,HYBRID
+Evolution de la population de Dakar et role de la capitale,HYBRID
+Superficie et population de Tambacounda avec le contexte regional,HYBRID
+Taux de pauvrete de Kaffrine et lien avec l'insecurite alimentaire,HYBRID
+Croissance du PIB 2023 et poids des secteurs economiques,HYBRID
+Esperance de vie hommes femmes et explication de l'ecart,HYBRID
+Donne le taux de handicap et la maniere dont il est mesure,HYBRID
+Acces a l'electricite : pourcentage national et disparites regionales,HYBRID
+Population de Diourbel et importance du departement de Mbacke,HYBRID
+Gini de Kedougou et paradoxe pauvrete-inegalites,HYBRID
+Taux d'activite recent et concept de population en age de travailler,HYBRID
+Inflation 2023 et consequences pour les menages pauvres,HYBRID
+Nombre d'emigrants et profil migratoire du Senegal,HYBRID
+Peux-tu me donner la population du Senegal s'il te plait ?,SQL
+J'aimerais connaitre le taux de chomage actuel,SQL
+Dis-moi le taux d'inflation de 2023,SQL
+Je veux savoir combien d'habitants compte Thies,SQL
+Pourrais-tu me dire le taux de pauvrete de Kolda ?,SQL
+Donne-moi s'il te plait la croissance du PIB en 2024,SQL
+Je cherche le chiffre de la population de Ziguinchor,SQL
+Tu peux me sortir le classement des regions par pauvrete ?,SQL
+Montre-moi l'evolution de la population depuis 1976,SQL
+J'ai besoin du taux d'activite le plus recent,SQL
+Il me faut l'esperance de vie au Senegal,SQL
+Combien y a-t-il de menages au Senegal ?,SQL
+C'est quoi le chiffre du Gini national ?,SQL
+Donne la densite de population de Dakar,SQL
+Quel pourcentage de Senegalais vit en ville ?,SQL
+Peux-tu m'expliquer comment l'ANSD mesure le chomage ?,RAG
+J'aimerais comprendre la methodologie du recensement,RAG
+Dis-moi ce que signifie l'indice de Gini,RAG
+Je veux savoir ce qu'est l'EHCVM,RAG
+Pourrais-tu m'expliquer comment l'inflation est calculee ?,RAG
+Tu peux me dire ou trouver les rapports du RGPH-5 ?,RAG
+Je cherche a comprendre la difference entre chomage BIT et elargi,RAG
+Explique-moi s'il te plait le role de l'ANSD,RAG
+J'ai besoin de comprendre comment le seuil de pauvrete est fixe,RAG
+Il me faut la definition du taux d'activite,RAG
+C'est quoi exactement l'indice synthetique de fecondite ?,RAG
+Que veut dire IHPC ?,RAG
+Comment puis-je acceder aux microdonnees des enquetes ?,RAG
+Ou est-ce que je peux telecharger les publications de l'ANSD ?,RAG
+Qu'entend-on par sous-emploi ?,RAG
+Peux-tu me donner le taux de chomage et m'expliquer comment il est mesure ?,HYBRID
+J'aimerais le chiffre de la pauvrete a Sedhiou avec l'explication de la methode,HYBRID
+Dis-moi la population de 2023 et comment le recensement a ete fait,HYBRID
+Je veux l'inflation de 2022 et comprendre pourquoi elle a augmente,HYBRID
+Donne-moi le Gini national et explique ce qu'il signifie,HYBRID
+Tu peux me donner l'esperance de vie et sa definition ?,HYBRID
+Montre l'evolution du PIB et explique la methode des comptes nationaux,HYBRID
+Quel est le taux d'urbanisation et comment est-il defini ?,HYBRID
+Combien de menages compte le pays et c'est quoi un menage exactement ?,HYBRID
+Peux-tu comparer la pauvrete de Dakar et Sedhiou et expliquer l'ecart ?,HYBRID
+Quelle est la difference entre chomage strict et chomage elargi ?,RAG
+Difference entre le chomage au sens du BIT et le chomage elargi,RAG
+Que veut dire chomage elargi ?,RAG
+Pourquoi deux taux de chomage differents ?,RAG
+Quelle difference entre pauvrete et extreme pauvrete ?,RAG
+Difference entre RGPH-4 et RGPH-5 ?,RAG
+Comment contacter l'ANSD ?,RAG
+Quelle est l'adresse de l'ANSD ?,RAG
+Quel est le numero de telephone de l'ANSD ?,RAG
+Je veux faire une demande de donnees specifiques,RAG
+Comment obtenir des tableaux personnalises aupres de l'ANSD ?,RAG
+Quand parait le prochain IHPC ?,RAG
+Quel est le calendrier des publications de l'ANSD ?,RAG
+Quand sera publiee la prochaine enquete emploi ?,RAG
+Ou consulter les donnees en open data ?,RAG
+Qu'est-ce que la plateforme ANADS ?,RAG
+Ou trouver l'annuaire statistique du Senegal ?,RAG
+Comment telecharger les microdonnees des enquetes ?,RAG
+Quelles sont les enquetes en cours a l'ANSD ?,RAG
+Quelles etudes l'ANSD mene-t-elle actuellement ?,RAG
+Qu'est-ce que l'enquete ENUPIS ?,RAG
+Parle-moi de l'enquete sur le commerce informel transfrontalier,RAG
+Quelles formations propose l'ENSAE ?,RAG
+Comment s'inscrire au concours de l'ENSAE ?,RAG
+Comment devenir statisticien au Senegal ?,RAG
+Qu'est-ce que le Master ADEPP ?,RAG
+Ou en est le recrutement des eleves ingenieurs statisticiens ?,RAG
+Je suis journaliste ou trouver les communiques de presse ?,RAG
+Qu'est-ce que le bulletin Le Phare ?,RAG
+Comment s'abonner aux publications de l'ANSD ?,RAG
+Je suis etudiant comment acceder aux donnees pour mon memoire ?,RAG
+Une entreprise peut-elle demander des statistiques a l'ANSD ?,RAG
+Quelles sont les tendances de l'emploi au Senegal ?,RAG
+Quelle est la situation du marche du travail ?,RAG
+Qu'est-ce que la BDEF ?,RAG
+Qu'est-ce que la BADIS ?,RAG
+Explique la participation au marche du travail,RAG
+Quelle est la tendance des prix a la consommation ?,RAG
+Presente la situation economique du Senegal,RAG
+Qu'est-ce que le SESN ?,RAG
+Comment evolue le secteur informel ?,RAG
+Quelles sont les dernieres tendances demographiques ?,RAG
