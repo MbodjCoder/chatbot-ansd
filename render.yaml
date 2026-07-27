@@ -1,0 +1,22 @@
+# Blueprint Render — déploiement en 1 clic (New → Blueprint → ce dépôt → Apply).
+# Docker (Dockerfile racine), région Frankfurt (proche Sénégal), plan gratuit.
+# La clé Groq n'est PAS ici : sync:false -> Render la demande à l'application
+# du blueprint (saisie manuelle, stockée chiffrée).
+services:
+  - type: web
+    name: rama-ansd
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ANSD_MODE
+        value: production
+      - key: ANSD_LLM_PROVIDER
+        value: groq
+      - key: ANSD_TRUST_PROXY
+        value: "true"
+      - key: ANSD_LLM_API_KEY
+        sync: false
