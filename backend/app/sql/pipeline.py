@@ -168,6 +168,12 @@ class TextToSQLPipeline:
         # plusieurs lignes, mais toutes leurs cellules sont vides : idem
         if not any(v is not None for r in rows for v in r):
             return _INDISPONIBLE
+        # Classement par region (col « nom » + une valeur) : phrase naturelle et
+        # sourcee ; le tableau/graphique complet est affiche en dessous (data).
+        if cols and cols[0] == "nom" and len(cols) >= 2:
+            phrase = _classement_regions(cols, rows)
+            if phrase:
+                return phrase
         lines = [" | ".join(cols)] + [" | ".join(str(v) for v in r) for r in rows[:15]]
         more = f"\n... ({len(rows)} lignes au total)" if len(rows) > 15 else ""
         return "Resultats (base ANSD) :\n" + "\n".join(lines) + more
@@ -212,6 +218,42 @@ def _sup(question: str) -> str | None:
     if m.group(2) in {"faible", "faibles", "bas", "basse", "petit", "petite"}:
         direction = "moins" if direction == "plus" else "plus"
     return direction
+
+
+_RANK_META = {
+    "population": ("population", " habitants", "RGPH-5, 2023"),
+    "taux_pauvrete": ("taux de pauvreté", " %", "EHCVM II"),
+    "gini": ("indice de Gini", "", "EHCVM II"),
+    "superficie_km2": ("superficie", " km²", ""),
+    "densite_hab_km2": ("densité", " habitants/km²", "RGPH-5, 2023"),
+}
+
+
+def _classement_regions(cols: list, rows: list) -> str | None:
+    """Phrase naturelle et sourcée pour un classement de régions (grounding :
+    chiffres issus de la base ; le détail complet est rendu par le tableau)."""
+    valcol = cols[-1]
+    meta = _RANK_META.get(valcol)
+    if not meta:
+        return None
+    lbl, unite, src = meta
+    try:
+        v0, vN = rows[0][-1], rows[-1][-1]
+    except (IndexError, TypeError):
+        return None
+    if v0 is None or vN is None:
+        return None
+    sens = ("de la plus élevée à la plus faible" if v0 >= vN
+            else "de la plus faible à la plus élevée")
+    if valcol == "population":
+        sens = ("de la plus peuplée à la moins peuplée" if v0 >= vN
+                else "de la moins peuplée à la plus peuplée")
+    src_txt = f" ({src})" if src else ""
+    # NB : n'introduire AUCUN nombre absent des preuves (ex. le compte de lignes),
+    # sinon le rail de fidélité numérique rejette la réponse.
+    return (f"Voici le classement des régions du Sénégal par {lbl}"
+            f"{src_txt}, {sens}. En tête : **{rows[0][0]}** "
+            f"(**{_fr(rows[0][-1])}{unite}**). Le détail complet figure ci-dessous.")
 
 
 def _humanize_row(question: str, d: dict) -> str | None:

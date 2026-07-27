@@ -53,7 +53,9 @@ def template_sql(user: str) -> str | None:
     # ---- superlatifs ("la region la plus peuplee", "la moins pauvre") ----
     # "le plus FAIBLE/BAS/PETIT x" = minimum : l'adjectif inverse le sens
     sup = re.search(r"\b(plus|moins)\s*(\w*)", q)
-    ranking = any(w in q for w in ["classe", "classement", "compare", "toutes les regions"])
+    ranking = any(w in q for w in ["classe", "classer", "classement", "compare",
+                                   "comparer", "toutes les regions", "par region",
+                                   "rang", "ordre", "palmares", "decroiss", "croiss"])
     # "le plus recent/actuel" = superlatif TEMPOREL : traite par les regles
     # standard (ORDER BY annee DESC), pas par le tri sur la valeur
     if sup and sup.group(2) in {"recent", "recente", "recents", "recentes",
@@ -86,6 +88,35 @@ def template_sql(user: str) -> str | None:
         if "gini" in q or "inegal" in q:
             return ("SELECT r.nom, p.gini FROM pauvrete p JOIN regions r "
                     f"ON r.id = p.region_id ORDER BY p.gini {order} LIMIT 1;")
+
+    # ---- classement des regions (LISTE complete ordonnee) ----
+    # « classe les regions par population decroissante », « par pauvrete »,
+    # « par superficie »... : retourne toutes les regions triees. Sans ce cas,
+    # une telle demande retombait a tort sur le CHIFFRE NATIONAL (bug corrige).
+    # Sens du tri : « decroissant » = DESC, « croissant » = ASC, defaut DESC.
+    if ranking and not region:
+        if "decroiss" in q:
+            r_order = "DESC"
+        elif "croiss" in q:
+            r_order = "ASC"
+        else:
+            r_order = "DESC"
+        if "peuple" in q or "habitant" in q or "population" in q or "demograph" in q:
+            return ("SELECT r.nom, d.annee, d.population FROM demographie d JOIN regions r "
+                    "ON r.id = d.region_id WHERE d.annee = (SELECT MAX(annee) FROM demographie) "
+                    f"ORDER BY d.population {r_order};")
+        if "pauvre" in q:
+            return ("SELECT r.nom, p.taux_pauvrete FROM pauvrete p JOIN regions r "
+                    f"ON r.id = p.region_id ORDER BY p.taux_pauvrete {r_order};")
+        if "superficie" in q or "grande" in q or "vaste" in q or "etendue" in q:
+            return f"SELECT nom, superficie_km2 FROM regions ORDER BY superficie_km2 {r_order};"
+        if "dense" in q or "densite" in q:
+            return ("SELECT r.nom, ROUND(d.population / r.superficie_km2, 1) AS densite_hab_km2 "
+                    "FROM demographie d JOIN regions r ON r.id = d.region_id "
+                    f"WHERE d.annee = 2023 ORDER BY densite_hab_km2 {r_order};")
+        if "gini" in q or "inegal" in q:
+            return ("SELECT r.nom, p.gini FROM pauvrete p JOIN regions r "
+                    f"ON r.id = p.region_id ORDER BY p.gini {r_order};")
 
     # ---- indicateurs nationaux : couverture EXHAUSTIVE de indicateurs_nationaux
     # (chaque chiffre publie de la table doit etre atteignable, vite et surement,
