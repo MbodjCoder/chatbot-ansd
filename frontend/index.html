@@ -53,14 +53,16 @@
     color:#fff;padding:9px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
     text-decoration:none;transition:top .15s}
   .skip:focus{top:8px;outline:2px solid #fff;outline-offset:2px}
-  /* App-shell : la RACINE ne défile jamais (ni H ni V). Seul #chat défile.
-     Hauteur = viewport DYNAMIQUE (100dvh) : suit l'apparition/disparition des
-     barres du navigateur mobile ET du clavier, donc l'en-tête (haut) et la barre
-     de saisie (bas) restent TOUJOURS entièrement visibles, où qu'on soit sur la
-     page. Repli 100vh pour les navigateurs sans dvh. */
+  /* App-shell FIXE : la racine ne défile jamais, seul #chat défile.
+     Hauteur = --appvh (piloté en JS via visualViewport) = zone RÉELLEMENT
+     visible au-dessus du clavier. Ainsi, clavier ouvert, l'app se réduit et la
+     barre de saisie reste juste au-dessus du clavier (jamais masquée), sans
+     débordement ni zoom. Replis : 100dvh puis 100vh si dvh/JS absents. */
   html,body{height:100vh;height:100dvh;max-width:100%;overflow:hidden;overscroll-behavior:none}
   img,svg,video,canvas{max-width:100%}
   body{
+    position:fixed;top:0;left:0;right:0;
+    height:100vh;height:100dvh;height:var(--appvh,100dvh);
     font-family:"Inter","Segoe UI",system-ui,-apple-system,"Helvetica Neue",sans-serif;
     background:var(--papier);color:var(--encre);
     display:flex;flex-direction:column;
@@ -1134,11 +1136,25 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') q.blur();
 });
 
-/* Mobile/tablette : toucher une autre zone (le fil de conversation) referme le
-   clavier — le champ de saisie revient à sa place. On ne défocalise PAS si le
-   geste vise la barre de saisie elle-même. */
-document.getElementById('chat').addEventListener('pointerdown', () => {
-  if (document.activeElement === q) q.blur();
+/* Clavier virtuel (mobile/tablette) : on cale la hauteur de l'app sur la zone
+   RÉELLEMENT visible (visualViewport). Clavier ouvert -> l'app se réduit et la
+   barre de saisie reste juste au-dessus du clavier, jamais masquée. Aucun
+   débordement (overflow:hidden) ni zoom (input 16px). */
+(function clage(){
+  const vv = window.visualViewport;
+  if (!vv) return;                       // navigateurs sans l'API : repli 100dvh
+  const applique = () => {
+    document.documentElement.style.setProperty('--appvh', vv.height + 'px');
+  };
+  vv.addEventListener('resize', applique);
+  vv.addEventListener('scroll', applique);
+  applique();
+})();
+
+/* Toucher HORS de la barre de saisie referme le clavier (le champ revient en
+   place). On ne défocalise pas si le geste vise la barre elle-même. */
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement === q && !e.target.closest('#barre')) q.blur();
 }, {passive:true});
 
 /* bouton flottant vers le dernier message quand on a remonte le fil */
