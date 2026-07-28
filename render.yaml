@@ -4,7 +4,7 @@
 # du blueprint (saisie manuelle, stockée chiffrée).
 services:
   - type: web
-    name: rama-ansd
+    name: rama
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: frankfurt
