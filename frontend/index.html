@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
-<meta name="description" content="RAMA : assistant conversationnel officiel d'accès aux statistiques du Sénégal (ANSD) — chiffres, comparaisons et documents sourcés.">
-<title>RAMA — Assistant statistique de l'ANSD</title>
+<meta name="description" content="Rama : posez vos questions sur les statistiques du Sénégal — chiffres, comparaisons et documents, d'après les données publiques de l'ANSD.">
+<title>Rama — Statistiques du Sénégal</title>
 <meta name="theme-color" content="#0e79c4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#08121f" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/jpeg" href="/logo-128.jpg">
@@ -14,20 +14,19 @@
 <meta name="apple-mobile-web-app-title" content="RAMA">
 <meta name="mobile-web-app-capable" content="yes">
 <meta property="og:type" content="website">
-<meta property="og:title" content="RAMA — Assistant statistique de l'ANSD">
-<meta property="og:description" content="Les chiffres officiels du Sénégal, en une question. Réponses fondées sur les données de l'ANSD, sources à l'appui.">
+<meta property="og:title" content="Rama — Statistiques du Sénégal">
+<meta property="og:description" content="Les statistiques du Sénégal, en une question. Réponses fondées sur les données publiques de l'ANSD, sources à l'appui.">
 <meta property="og:image" content="/icon-512.png">
 <meta property="og:locale" content="fr_FR">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="RAMA — Assistant statistique de l'ANSD">
-<meta name="twitter:description" content="Les chiffres officiels du Sénégal, en une question. Réponses sourcées.">
-<link rel="canonical" href="https://www.ansd.sn/">
+<meta name="twitter:title" content="Rama — Statistiques du Sénégal">
+<meta name="twitter:description" content="Les statistiques du Sénégal, en une question. Réponses sourcées.">
 
 <style>
   /* ============ Jetons de thème (clair par défaut) ============ */
   /* Palette ANSD : bleu sombre (marine) · bleu océan · blanc */
   :root{
-    --papier:#f4f8fc; --carte:#ffffff; --carte2:#eaf2fa;
+    --papier:#ffffff; --carte:#ffffff; --carte2:#eaf2fa;
     --encre:#0a2440; --encre2:#3f5972; --encre3:#70879e;
     --ligne:#dce7f2; --ligne2:#c9d9ea; --accent:#0e79c4; --accent-fonce:#0b2f5c;
     --accent-doux:#0e79c414;
@@ -35,7 +34,6 @@
     --sql:#0e79c4; --rag:#3a5fa8; --hyb:#6a5acd; --guard:#b3541e;
     --ombre:0 1px 2px rgba(11,36,64,.06),0 4px 14px rgba(11,36,64,.06);
     --ombre-fort:0 4px 12px rgba(11,36,64,.10),0 16px 40px rgba(11,36,64,.12);
-    --halo:radial-gradient(1100px 620px at 50% -8%,#0e79c412,transparent 62%);
   }
   [data-theme="dark"]{
     --papier:#08121f; --carte:#101d2e; --carte2:#16263b;
@@ -46,7 +44,6 @@
     --sql:#3fa4e6; --rag:#6c8fd6; --hyb:#9a8be6; --guard:#d0793f;
     --ombre:0 1px 2px rgba(0,0,0,.38),0 4px 14px rgba(0,0,0,.30);
     --ombre-fort:0 8px 30px rgba(0,0,0,.48);
-    --halo:radial-gradient(1100px 620px at 50% -8%,#3fa4e614,transparent 60%);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   .skip{position:absolute;left:8px;top:-48px;z-index:100;background:var(--accent);
@@ -78,26 +75,17 @@
 
   /* ============ En-tête ============ */
   header{
-    flex:none;
-    background:var(--carte);border-bottom:1px solid var(--ligne);
-    padding:6px 18px;display:flex;align-items:center;gap:13px;
-    position:sticky;top:0;z-index:10;box-shadow:var(--ombre);
-    padding-top:calc(6px + env(safe-area-inset-top));
+    flex:none;height:56px;
+    background:var(--papier);border-bottom:1px solid var(--ligne);
+    padding:0 20px;display:flex;align-items:center;gap:12px;
+    position:sticky;top:0;z-index:10;
+    padding-top:env(safe-area-inset-top);
   }
-  .logo{display:flex;align-items:center;gap:11px;min-width:0}
-  .logo-mark{
-    flex:none;width:38px;height:38px;border-radius:9px;overflow:hidden;
-    border:1px solid var(--ligne);
-  }
+  body.vide header{border-bottom-color:transparent}
+  .logo{display:flex;align-items:center;gap:10px;min-width:0}
+  .logo-mark{flex:none;width:26px;height:26px;border-radius:7px;overflow:hidden}
   .logo-mark img{width:100%;height:100%;object-fit:cover;display:block}
-  .logo h1{font-size:1.05rem;font-weight:700;letter-spacing:.02em;white-space:nowrap;
-    display:flex;align-items:baseline;gap:.16em}
-  .logo h1 .script{
-    font-weight:800;font-size:1.2rem;line-height:1;letter-spacing:.005em;
-    color:var(--accent)}
-  .logo h1 .sep{color:var(--encre3);font-weight:400}
-  .logo h1 .ansd{font-weight:700;letter-spacing:.07em;font-size:.86rem;color:var(--encre2)}
-  .logo p{font-size:.72rem;color:var(--encre3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .logo h1{font-size:1.02rem;font-weight:600;letter-spacing:-.01em;color:var(--encre)}
   .spacer{flex:1}
   .btn-ico{
     background:none;border:1px solid var(--ligne);border-radius:10px;color:var(--encre2);
@@ -106,11 +94,9 @@
   }
   .btn-ico:hover{background:var(--carte2);border-color:var(--ligne2);color:var(--encre)}
   .btn-ico:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  /* Nouvelle conversation : action fréquente -> icône un peu plus grande et
-     accentuée pour être vite repérée. */
-  #btn-nouveau{width:42px;height:42px;font-size:1.2rem;color:var(--accent);
-    border-color:var(--ligne2)}
-  #btn-nouveau:hover{background:var(--accent-doux);border-color:var(--accent);color:var(--accent)}
+  /* Nouvelle conversation : seule action d'en-tête, utile seulement une fois
+     la conversation commencée (masquée sur l'accueil). */
+  body.vide #btn-nouveau{display:none}
 
   /* ============ Fil de conversation ============ */
   #chat{flex:1;min-height:0;overflow-y:auto;padding:14px 0 6px;scroll-behavior:smooth}
@@ -246,112 +232,15 @@
   }
   .suivre button:hover{border-color:var(--accent);transform:translateY(-1px)}
 
-  /* ============ Accueil (hero centré) ============ */
-  /* safe center : centre le hero quand il tient, mais reste défilable depuis le
-     haut sur petit écran (pas de rognage du titre). */
-  #chat.vide{display:flex;flex-direction:column;justify-content:safe center;background:var(--halo)}
+  /* ============ Accueil : une phrase, la saisie, quatre exemples ============ */
+  #chat.vide{display:flex;flex-direction:column;justify-content:safe center}
   #chat.vide .wrap{width:100%}
-  .accueil{text-align:center;padding:8px 0 4px;animation:heroIn .5s cubic-bezier(.22,1,.36,1)}
-  @keyframes heroIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .accueil{text-align:center;animation:heroIn .5s cubic-bezier(.22,1,.36,1)}
+  @keyframes heroIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .accueil h2{
-    font-size:1.4rem;font-weight:700;letter-spacing:-.02em;line-height:1.2;
-    color:var(--encre);margin-bottom:8px;
+    font-size:1.75rem;font-weight:600;letter-spacing:-.025em;line-height:1.25;
+    color:var(--encre);text-wrap:balance;
   }
-  .accueil h2 .g{
-    font-weight:800;color:var(--accent);letter-spacing:-.01em}
-  .accueil .sub{
-    font-size:.9rem;color:var(--encre2);line-height:1.55;max-width:470px;
-    margin:0 auto 18px;
-  }
-  .cards{
-    display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:620px;
-    margin:0 auto;text-align:left;
-  }
-  .cards button{
-    display:flex;gap:12px;align-items:flex-start;background:var(--carte);
-    border:1px solid var(--ligne);border-radius:12px;padding:11px 13px;cursor:pointer;
-    font-family:inherit;transition:transform .18s cubic-bezier(.22,1,.36,1),
-      border-color .18s,box-shadow .18s;box-shadow:var(--ombre);text-align:left;
-  }
-  .cards button:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:var(--ombre-fort)}
-  .cards button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .cards .ic{
-    flex:none;width:29px;height:29px;border-radius:9px;display:grid;place-items:center;
-    background:var(--accent-doux);font-size:.95rem;
-  }
-  .cards .tx{min-width:0;display:flex;flex-direction:column;gap:3px}
-  .cards .tt{display:block;font-size:.84rem;font-weight:650;color:var(--encre);line-height:1.3}
-  .cards .hh{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-    overflow:hidden;font-size:.72rem;color:var(--encre3);line-height:1.35}
-  .cards button:hover .ic{background:var(--accent);transform:scale(1.05);transition:.18s}
-  .accueil .socle{margin-top:16px;font-size:.74rem;color:var(--encre3);
-    display:flex;gap:7px;justify-content:center;flex-wrap:wrap;align-items:center}
-  .accueil .socle b{color:var(--encre2);font-weight:600}
-  .accueil .socle a{color:var(--accent);font-weight:600;text-decoration:none}
-  .accueil .socle a:hover{text-decoration:underline}
-  @media (max-width:560px){
-    .cards{grid-template-columns:1fr}
-    .accueil h2{font-size:1.42rem}
-  }
-
-  /* ============ Catégories → panneau des questions les plus recherchées ==== */
-  .cards .badge-cat{
-    margin-left:auto;align-self:center;font-size:.7rem;color:var(--encre3);
-    background:var(--carte2);border:1px solid var(--ligne);border-radius:99px;
-    padding:2px 9px;white-space:nowrap;font-weight:600;transition:all .18s;
-  }
-  .cards button:hover .badge-cat{border-color:var(--accent);color:var(--accent)}
-  .catpanel{
-    position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
-    background:rgba(8,18,31,.42);backdrop-filter:blur(3px);padding:18px;
-  }
-  .catpanel.on{display:flex;animation:fade .16s ease-out}
-  @keyframes fade{from{opacity:0}to{opacity:1}}
-  .catpanel .box{
-    background:var(--carte);border:1px solid var(--ligne);border-radius:18px;
-    width:100%;max-width:560px;max-height:82vh;overflow:auto;box-shadow:var(--ombre-fort);
-    animation:rise .22s cubic-bezier(.22,1,.36,1);
-  }
-  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-  .catpanel .top{
-    display:flex;align-items:center;gap:12px;padding:16px 18px 13px;
-    position:sticky;top:0;background:var(--carte);border-bottom:1px solid var(--ligne);z-index:1;
-  }
-  .catpanel .top .ic{
-    width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
-    background:var(--accent-doux);font-size:1.15rem;flex:none;
-  }
-  .catpanel .top .tt{font-size:1rem;font-weight:700;color:var(--encre);line-height:1.2}
-  .catpanel .top .hh{font-size:.75rem;color:var(--encre3);margin-top:2px}
-  .catpanel .top .x{
-    margin-left:auto;border:1px solid var(--ligne);background:none;color:var(--encre2);
-    width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:.9rem;flex:none;
-    display:grid;place-items:center;transition:all .15s;
-  }
-  .catpanel .top .x:hover{background:var(--carte2);color:var(--encre)}
-  .catpanel .top .x:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .catpanel .lead{font-size:.74rem;color:var(--encre3);padding:11px 18px 2px}
-  .qlist{display:flex;flex-direction:column;gap:6px;padding:6px 14px 16px}
-  .qlist button{
-    display:flex;align-items:center;gap:11px;width:100%;text-align:left;
-    background:var(--carte);border:1px solid var(--ligne);border-radius:12px;padding:11px 13px;
-    cursor:pointer;font-family:inherit;color:var(--encre);transition:all .15s;
-  }
-  .qlist button:hover{border-color:var(--accent);background:var(--accent-doux);transform:translateX(2px)}
-  .qlist button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .qlist .rank{
-    flex:none;width:23px;height:23px;border-radius:7px;display:grid;place-items:center;
-    font-size:.72rem;font-weight:700;background:var(--carte2);color:var(--encre2);
-    font-variant-numeric:tabular-nums;
-  }
-  .qlist button:nth-child(1) .rank{background:var(--accent);color:#fff}
-  [data-theme="dark"] .qlist button:nth-child(1) .rank{color:#0d1512}
-  .qlist .qt{flex:1;font-size:.87rem;line-height:1.35}
-  .qlist .cnt{
-    flex:none;font-size:.68rem;color:var(--encre3);white-space:nowrap;
-    font-variant-numeric:tabular-nums;
-  }
-  @media (max-width:560px){ .qlist .cnt{display:none} }
 
   /* indicateur de frappe */
   .frappe{display:flex;gap:5px;padding:4px 2px;align-items:center}
@@ -368,45 +257,53 @@
   /* flex-none : la barre garde sa taille et reste collée au bas du shell.
      Marge basse un peu plus grande (prompt légèrement remonté) + respect de la
      zone sûre iOS (encoche/barre gestuelle) pour qu'il ne soit jamais masqué. */
-  #barre{flex:none;background:linear-gradient(to top,var(--papier) 72%,transparent);
-    padding:4px 0 calc(26px + env(safe-area-inset-bottom))}
-  #barre .wrap{max-width:760px}
-  .sugg{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;justify-content:center;
-    max-height:34px;overflow:hidden}
+  #barre{flex:none;background:var(--papier);
+    padding:4px 0 calc(10px + env(safe-area-inset-bottom))}
+  #barre .wrap{max-width:720px;display:flex;flex-direction:column}
+  .sugg{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;justify-content:center;
+    max-height:38px;overflow:hidden}
+  .sugg:empty{display:none}
   .sugg button{
-    background:var(--carte);color:var(--encre2);border:1px solid var(--ligne);
-    padding:5px 12px;font-size:.76rem;font-weight:500;border-radius:99px;cursor:pointer;
-    transition:all .15s;box-shadow:var(--ombre);font-family:inherit;white-space:nowrap;
+    background:none;color:var(--encre2);border:1px solid var(--ligne);
+    padding:8px 14px;font-size:.86rem;border-radius:999px;cursor:pointer;
+    transition:background .15s,color .15s;font-family:inherit;white-space:nowrap;
     max-width:100%;overflow:hidden;text-overflow:ellipsis;
   }
-  .sugg button:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
-  /* champ de saisie premium : icone d'envoi INTEGREE, visible a la frappe */
+  .sugg button:hover{background:var(--carte2);color:var(--encre)}
+  .sugg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  /* champ de saisie : contour fin, bouton d'envoi rond intégré */
   .saisie{position:relative;display:flex}
-  /* Contour BLEU permanent (bien visible dans le flux) ; pas de halo/surlignage
-     au focus — seule la teinte du contour se renforce légèrement. */
   input#q{
-    flex:1;padding:12px 54px 12px 18px;border:1.5px solid var(--accent);
-    /* 16px : sous ce seuil, iOS/Safari ZOOME automatiquement au focus (cause du
-       « il faut dézoomer » qui masquait en-tête/prompt). 16px = aucun zoom. */
-    border-radius:14px;font-size:16px;outline:none;background:var(--carte);
-    color:var(--encre);box-shadow:var(--ombre);font-family:inherit;
-    transition:border-color .15s;
+    flex:1;min-width:0;height:58px;padding:0 62px 0 22px;
+    border:1px solid var(--ligne2);border-radius:29px;
+    /* 16px : sous ce seuil, iOS/Safari zoome automatiquement au focus. */
+    font-size:16px;outline:none;background:var(--carte);color:var(--encre);
+    box-shadow:0 1px 2px rgba(11,27,43,.04),0 6px 24px rgba(11,27,43,.06);
+    font-family:inherit;transition:border-color .15s;
   }
   input#q::placeholder{color:var(--encre3)}
-  input#q:focus{border-color:var(--accent-fonce);box-shadow:var(--ombre)}
+  input#q:focus{border-color:color-mix(in srgb,var(--accent) 45%,var(--ligne2))}
   button#go{
-    position:absolute;right:7px;top:50%;translate:0 -50%;
-    width:34px;height:34px;border-radius:10px;border:none;cursor:pointer;
-    background:var(--accent);color:#fff;display:flex;align-items:center;
-    justify-content:center;padding:0;
-    opacity:0;transform:scale(.6) translateY(0);pointer-events:none;
-    transition:opacity .18s, transform .2s cubic-bezier(.34,1.56,.64,1), filter .15s;
+    position:absolute;right:9px;top:50%;translate:0 -50%;
+    width:40px;height:40px;border-radius:50%;border:none;cursor:default;
+    background:var(--accent);color:#fff;display:grid;place-items:center;padding:0;
+    opacity:.25;pointer-events:none;transition:opacity .15s;
   }
-  button#go.actif{opacity:1;transform:scale(1);pointer-events:auto}
-  button#go svg{width:17px;height:17px;fill:currentColor;margin-left:1px}
+  button#go.actif{opacity:1;pointer-events:auto;cursor:pointer}
+  button#go svg{width:18px;height:18px}
   [data-theme="dark"] button#go{color:#0d1512}
-  button#go:hover{filter:brightness(1.08)}
-  button#go:focus-visible,input#q:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button#go:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .mention{text-align:center;font-size:.74rem;color:var(--encre3);margin-top:10px}
+  .mention a{color:inherit;text-underline-offset:2px}
+
+  /* Accueil, grand écran : la saisie remonte au centre, sous la phrase, et
+     les exemples passent dessous. Mobile : elle reste en bas, au pouce. */
+  @media (min-width:641px){
+    body.vide #chat{flex:0 0 auto;margin-top:auto;padding-bottom:28px;overflow:visible}
+    body.vide #barre{margin-bottom:auto;padding-bottom:8vh}
+    body.vide .sugg{order:2;margin:16px 0 0}
+    body.vide .mention{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom))}
+  }
 
   /* bouton flottant "descendre au dernier message" */
   #bas{
@@ -419,60 +316,45 @@
   #bas.visible{display:flex}
 
   @media (max-width:640px){
-    header{padding:6px 12px;gap:9px}
-    .logo p{display:none}
+    header{padding:0 14px}
+    .accueil h2{font-size:1.4rem;padding:0 8px}
+    .sugg{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none;max-height:none}
+    .sugg::-webkit-scrollbar{display:none}
+    .sugg button{flex:none}
     .bot>.meta,.bot>.tabres,.bot>.graf,.bot>.liens,.bot>details.sqlbox{margin-left:0}
     .bot .bulle,.bot .tabres,.bot .graf,.bot .liens,.meta,details.sqlbox{max-width:100%}
     .user .bulle{max-width:88%}
     .brow{grid-template-columns:92px 1fr 64px}
-    .btn-ico{width:34px;height:34px}
-    #btn-nouveau{width:40px;height:40px}
-  }
-  @media (max-width:380px){
-    .btn-ico{width:32px;height:32px;font-size:.9rem}
-    #btn-nouveau{width:38px;height:38px;font-size:1.1rem}
-    header{gap:6px;padding:6px 10px}
   }
 </style>
 </head>
-<body>
+<body class="vide">
 <a class="skip" href="#q">Aller à la zone de saisie</a>
 <header>
   <div class="logo">
-    <span class="logo-mark"><img src="logo-128.jpg" width="38" height="38" alt="Rama — assistant statistique de l'ANSD"></span>
-    <div>
-      <h1><span class="script">Rama</span></h1>
-      <p>Assistant statistique officiel — Agence Nationale de la Statistique et de la Démographie</p>
-    </div>
+    <span class="logo-mark"><img src="logo-128.jpg" width="26" height="26" alt=""></span>
+    <h1>Rama</h1>
   </div>
   <div class="spacer"></div>
-  <button class="btn-ico" id="btn-export" title="Exporter la conversation" aria-label="Exporter la conversation">⤓</button>
   <button class="btn-ico" id="btn-nouveau" title="Nouvelle conversation" aria-label="Nouvelle conversation">⟳</button>
-  <button class="btn-ico" id="btn-theme" title="Basculer clair/sombre" aria-label="Basculer le thème">◐</button>
 </header>
 
 <div id="chat" class="vide"><div class="wrap" id="fil" aria-live="polite">
   <div class="accueil">
-    <h2>Bienvenue&nbsp;! Je suis <span class="g">Rama</span>.</h2>
-    <p class="sub">Je vous accompagne dans la consultation des statistiques
-      officielles du Sénégal publiées par l'ANSD.</p>
-    <div class="cards" id="cards" role="group" aria-label="Exemples de questions"></div>
-    <div class="socle">
-      <span>🔒 Sources <b>officielles</b> ANSD</span><span>·</span>
-      <span><a href="/a-propos.html">À propos &amp; confidentialité</a></span>
-    </div>
+    <h2>Que voulez-vous savoir sur le Sénégal&nbsp;?</h2>
   </div>
 </div></div>
 
 <div id="barre"><div class="wrap">
   <div class="sugg" id="sugg" role="group" aria-label="Suggestions de questions"></div>
   <form id="f" class="saisie">
-    <input id="q" placeholder="Posez votre question…"
+    <input id="q" placeholder="Population, emploi, pauvreté, prix…"
            autocomplete="off" required maxlength="500" aria-label="Votre question">
     <button id="go" type="submit" aria-label="Envoyer la question" title="Envoyer">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.4 20.4 22.5 12 3.4 3.6 3.4 10.1 17 12 3.4 13.9z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
     </button>
   </form>
+  <p class="mention">Rama peut se tromper. Vérifiez les chiffres sur <a href="https://www.ansd.sn" target="_blank" rel="noopener">ansd.sn</a> · <a href="/a-propos.html">À propos</a></p>
   <button id="bas" aria-label="Aller au dernier message" title="Dernier message">↓</button>
 </div></div>
 
@@ -486,13 +368,12 @@ let transcript = [];
 let dernieresSuggs = null;   /* suggestions contextuelles du dernier tour */
 let suivreBas = true;        /* auto-suivi : caler la réponse en haut, sauf si l'utilisateur a défilé */
 
-/* ============ thème (sélectionné, pas seulement hérité) ============ */
+/* ============ thème : suit le réglage clair/sombre de l'appareil ============ */
 const racine = document.documentElement;
-function appliqueTheme(t){ racine.setAttribute('data-theme', t); localStorage.setItem('rama-theme', t); }
-appliqueTheme(localStorage.getItem('rama-theme') ||
-  (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-document.getElementById('btn-theme').onclick = () =>
-  appliqueTheme(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+const sombre = matchMedia('(prefers-color-scheme: dark)');
+function appliqueTheme(t){ racine.setAttribute('data-theme', t); }
+appliqueTheme(sombre.matches ? 'dark' : 'light');
+sombre.addEventListener('change', e => appliqueTheme(e.matches ? 'dark' : 'light'));
 
 /* ============ utilitaires ============ */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -525,128 +406,28 @@ const LIBELLES = {
 };
 const lib = c => LIBELLES[c] || c;
 
-/* ============ suggestions : UNE zone, evolutive avec la conversation ====
-   Au depart : questions d'amorce. Ensuite : les suggestions contextuelles
-   renvoyees par le backend (liees au sujet courant, jamais deja posees). */
-const SUGGS_INIT = [
-  "Quelle est la population du Sénégal en 2023 ?",
-  "Classe les régions par taux de pauvreté décroissant",
-  "Où trouver les rapports du RGPH-5 ?",
+/* ============ suggestions : UNE zone, évolutive avec la conversation ====
+   À l'accueil : quatre amorces courtes (libellé bref, question complète).
+   Ensuite : les suggestions contextuelles renvoyées par le backend (liées au
+   sujet courant, jamais déjà posées). Chaque amorce est vérifiée répondable. */
+const AMORCES = [
+  {libelle:"Population du Sénégal", q:"Combien d'habitants compte le Sénégal ?"},
+  {libelle:"Taux de chômage", q:"Quel est le taux de chômage ?"},
+  {libelle:"Région la plus pauvre", q:"Quelle région est la plus pauvre ?"},
+  {libelle:"Inflation en 2024", q:"Quelle est l'inflation en 2024 ?"},
 ];
-/* ============ catégories cliquables (état vide) ============
-   Chaque carte est une CATÉGORIE : au clic, elle n'exécute pas une question,
-   elle ouvre un panneau des questions les plus RECHERCHÉES de cette catégorie,
-   classées sur la télémétrie réelle du service (endpoint /api/popular).
-   Repli statique si l'API est indisponible (hors ligne). */
-const CATS_FALLBACK = [
-  {id:"population", icon:"👥", label:"Population & démographie",
-   hint:"Habitants, régions, urbanisation", questions:[
-    {q:"Quelle est la population du Sénégal en 2023 ?", recherches:0},
-    {q:"Quelle est la population de Dakar en 2023 ?", recherches:0},
-    {q:"Quel est le taux d'urbanisation du pays ?", recherches:0},
-    {q:"Quelle est la région la plus peuplée du Sénégal ?", recherches:0}]},
-  {id:"pauvrete", icon:"🏠", label:"Pauvreté & niveau de vie",
-   hint:"Taux de pauvreté, inégalités, Gini", questions:[
-    {q:"Classe les régions par taux de pauvreté décroissant", recherches:0},
-    {q:"Comment l'ANSD mesure-t-elle la pauvreté ?", recherches:0},
-    {q:"Qu'est-ce que l'indice de Gini ?", recherches:0}]},
-  {id:"emploi", icon:"💼", label:"Emploi & chômage",
-   hint:"Chômage, activité, emploi des jeunes", questions:[
-    {q:"Quel est le taux de chômage en 2024 ?", recherches:0},
-    {q:"Quel est le taux d'activité au Sénégal ?", recherches:0}]},
-  {id:"documents", icon:"🧭", label:"Trouver un document",
-   hint:"Rapports, enquêtes, microdonnées ANADS", questions:[
-    {q:"Où trouver les rapports du RGPH-5 ?", recherches:0},
-    {q:"Où télécharger le rapport EHCVM ?", recherches:0},
-    {q:"Comment contacter l'ANSD ?", recherches:0}]},
-];
-let CATS = null;
-async function chargeCategories(){
-  try{
-    const r = await fetch('/api/popular');
-    const d = await r.json();
-    CATS = (d.categories || []).filter(c => c.questions && c.questions.length);
-  }catch(e){ CATS = null; }
-  if (!CATS || !CATS.length) CATS = CATS_FALLBACK;
-  renderHero();
-  /* lien profond : /?cat=population ouvre directement la catégorie */
-  const cid = new URLSearchParams(location.search).get('cat');
-  if (cid){ const c = CATS.find(x => x.id === cid); if (c) ouvreCategorie(c); }
-}
-function renderHero(){
-  const z = document.getElementById('cards');
-  if (!z) return;
-  z.innerHTML = '';
-  for (const c of (CATS || CATS_FALLBACK).slice(0, 6)){
-    const n = (c.questions || []).length;
-    const b = document.createElement('button'); b.type = 'button';
-    b.innerHTML = '<span class="ic">' + c.icon + '</span><span class="tx">' +
-      '<span class="tt">' + esc(c.label) + '</span>' +
-      '<span class="hh">' + esc(c.hint || '') + '</span></span>' +
-      '<span class="badge-cat">' + n + ' ›</span>';
-    b.setAttribute('aria-label', 'Catégorie : ' + c.label +
-      ' — voir les questions les plus recherchées');
-    b.onclick = () => ouvreCategorie(c);
-    z.appendChild(b);
-  }
-}
-
-/* panneau modal : questions les plus recherchées d'une catégorie */
-let _catFocusRetour = null;
-function ouvreCategorie(c){
-  let p = document.getElementById('catpanel');
-  if (!p){
-    p = document.createElement('div'); p.id = 'catpanel'; p.className = 'catpanel';
-    p.addEventListener('click', e => { if (e.target === p) fermeCategorie(); });
-    document.body.appendChild(p);
-  }
-  _catFocusRetour = document.activeElement;
-  const qs = (c.questions || []).filter(x => x.q);
-  p.innerHTML =
-    '<div class="box" role="dialog" aria-modal="true" aria-label="Questions : ' + esc(c.label) + '">' +
-      '<div class="top"><span class="ic" aria-hidden="true">' + c.icon + '</span>' +
-        '<div><div class="tt">' + esc(c.label) + '</div>' +
-        '<div class="hh">' + esc(c.hint || '') + '</div></div>' +
-        '<button class="x" aria-label="Fermer" title="Fermer">✕</button></div>' +
-      '<div class="lead">Les questions les plus recherchées dans cette catégorie — ' +
-        'cliquez pour la poser.</div>' +
-      '<div class="qlist"></div></div>';
-  const ql = p.querySelector('.qlist');
-  qs.forEach((it, i) => {
-    const b = document.createElement('button'); b.type = 'button';
-    const cnt = it.recherches > 0
-      ? '<span class="cnt" title="Nombre de fois recherchée">🔎 ' +
-        it.recherches.toLocaleString('fr-FR') + '</span>'
-      : '';
-    b.innerHTML = '<span class="rank" aria-hidden="true">' + (i + 1) + '</span>' +
-      '<span class="qt">' + esc(it.q) + '</span>' + cnt;
-    b.setAttribute('aria-label', it.q);
-    b.onclick = () => { fermeCategorie(); poser(it.q); };
-    ql.appendChild(b);
-  });
-  p.querySelector('.x').onclick = fermeCategorie;
-  p.classList.add('on');
-  document.addEventListener('keydown', _escFerme);
-  p.querySelector('.qlist button')?.focus();
-}
-function fermeCategorie(){
-  const p = document.getElementById('catpanel');
-  if (p) p.classList.remove('on');
-  document.removeEventListener('keydown', _escFerme);
-  if (_catFocusRetour && _catFocusRetour.focus){ _catFocusRetour.focus(); _catFocusRetour = null; }
-}
-function _escFerme(e){ if (e.key === 'Escape'){ e.stopPropagation(); fermeCategorie(); } }
 function montreSuggs(liste){
   const zone = document.getElementById('sugg');
   zone.innerHTML = '';
-  for (const s of (liste || []).slice(0, 3)){
+  for (const s of (liste || []).slice(0, 4)){
+    const {libelle, q: question} = typeof s === 'string' ? {libelle: s, q: s} : s;
     const b = document.createElement('button');
-    b.type = 'button'; b.textContent = s;
-    b.onclick = () => poser(s);
+    b.type = 'button'; b.textContent = libelle;
+    if (libelle !== question) b.title = question;
+    b.onclick = () => poser(question);
     zone.appendChild(b);
   }
 }
-chargeCategories();
 
 /* ============ graphique : barres horizontales, série unique ============ */
 /* Déclenché quand le SQL renvoie ≥3 lignes avec 1 colonne numérique.
@@ -683,7 +464,7 @@ function grafBarres(data){
     boite.appendChild(ligne);
   }
   const note = document.createElement('div'); note.className = 'note';
-  note.textContent = 'Source : base de données officielle ANSD (requête SQL tracée ci-dessous).';
+  note.textContent = 'Source : données publiées par l\'ANSD (requête SQL tracée ci-dessous).';
   boite.appendChild(note);
   return boite;
 }
@@ -772,7 +553,7 @@ function grafLigne(data, st){
   h.textContent = lib(columns[st.iVal]) + ' — évolution par ' + lib(columns[st.iAn]);
   boite.append(h, svg);
   const note = document.createElement('div'); note.className = 'note';
-  note.textContent = 'Source : base de données officielle ANSD (requête SQL tracée ci-dessous).';
+  note.textContent = 'Source : données publiées par l\'ANSD (requête SQL tracée ci-dessous).';
   boite.appendChild(note);
   return boite;
 }
@@ -911,7 +692,7 @@ function composer(conteneur, d){
   // texte : si tableau structuré disponible, remplacer l'ASCII redondant
   let texte = d.answer;
   if (multi && /^Resultats \(base ANSD\)/.test(texte))
-    texte = 'Voici les résultats issus de la base de données officielle ANSD (' +
+    texte = 'Voici les résultats issus des données publiées par l\'ANSD (' +
             d.data.rows.length + ' lignes) :';
   bulleEl.innerHTML = '<p>' + md(texte) + '</p>';
   conteneur.appendChild(metaPour(d));
@@ -963,7 +744,7 @@ async function poser(txt){
   /* messages d'attente progressifs (inférence locale = plusieurs dizaines
      de secondes) : l'utilisateur sait que le système travaille */
   const etapes = [[4,'RAMA analyse votre question…'],
-                  [12,'Consultation des données officielles ANSD…'],
+                  [12,'Consultation des données de l\'ANSD…'],
                   [30,'Rédaction de la réponse…'],
                   [60,'Encore un instant — le modèle local rédige une réponse complète…']];
   const attenteTimers = etapes.map(([s,msg]) => setTimeout(() => {
@@ -1046,7 +827,7 @@ async function poser(txt){
     }
   }
   go.disabled = false; q.focus();
-  montreSuggs(dernieresSuggs || SUGGS_INIT);
+  montreSuggs(dernieresSuggs || AMORCES);
 }
 f.addEventListener('submit', e => {e.preventDefault(); if (q.value.trim()) poser(q.value.trim());});
 
@@ -1066,6 +847,7 @@ function masqueAccueil(){
   const a = document.querySelector('.accueil');
   if (a) a.style.display = 'none';
   document.getElementById('chat').classList.remove('vide');
+  document.body.classList.remove('vide');
 }
 function restaure(){
   let sauve;
@@ -1088,7 +870,7 @@ function restaure(){
     const li = cartesLiens(t.links);
     if (li) c.appendChild(li);
   }
-  montreSuggs(dernieresSuggs || SUGGS_INIT);
+  montreSuggs(dernieresSuggs || AMORCES);
   fil.lastElementChild?.scrollIntoView({block:'end'});
 }
 
@@ -1098,31 +880,10 @@ document.getElementById('btn-nouveau').onclick = () => {
   fil.querySelectorAll('.msg').forEach(m => m.remove());
   const a = document.querySelector('.accueil'); if (a) a.style.display = '';
   document.getElementById('chat').classList.add('vide');
-  renderHero();
+  document.body.classList.add('vide');
   localStorage.removeItem(CLE_CONV);
-  montreSuggs([]);              // le hero porte les amorces ; bas vide
+  montreSuggs(AMORCES);
   q.focus();
-};
-document.getElementById('btn-export').onclick = () => {
-  if (!transcript.length) return;
-  const lignes = ['# Conversation RAMA-ANSD — ' + new Date().toLocaleString('fr-FR'), ''];
-  for (const t of transcript){
-    lignes.push('**' + t.role + (t.route ? ' [' + t.route + ']' : '') + '** : ' + t.text, '');
-    if (t.table){
-      lignes.push('| ' + t.table.columns.map(lib).join(' | ') + ' |');
-      lignes.push('|' + t.table.columns.map(() => '---').join('|') + '|');
-      for (const r of t.table.rows)
-        lignes.push('| ' + r.map(v => v === null ? '—' : v).join(' | ') + ' |');
-      lignes.push('');
-    }
-    if (t.liens && t.liens.length)
-      lignes.push('Sources ANSD : ' + t.liens.join(' ; '), '');
-  }
-  const blob = new Blob([lignes.join('\n')], {type:'text/markdown;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'conversation-rama-ansd.md';
-  a.click(); URL.revokeObjectURL(a.href);
 };
 
 
@@ -1179,7 +940,10 @@ if (params.get('q')){
 } else {
   restaure();                        // usage normal : on reprend où on en était
 }
-q.focus();
+if (!transcript.length) montreSuggs(AMORCES);
+/* focus initial au clavier physique seulement : sur mobile, il ouvrirait le
+   clavier virtuel et masquerait l'accueil. */
+if (matchMedia('(pointer: fine)').matches) q.focus();
 </script>
 </body>
 </html>
