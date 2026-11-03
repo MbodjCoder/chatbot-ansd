@@ -745,7 +745,8 @@ class ANSDChatbot:
             r = self.sql.answer(effective_q)
             parts.append(r.answer)
             sql_used = r.sql
-            evidence += " ".join(str(x) for row in r.rows for x in row) + " " + " ".join(r.columns)
+            # « ; » entre cellules : le contrôle ne doit pas fusionner deux nombres voisins
+            evidence += " ; ".join(str(x) for row in r.rows for x in row) + " ; " + " ".join(r.columns)
             sources.append({"type": "base_de_donnees", "sql": r.sql})
             if r.rows and r.columns:
                 data = {"columns": r.columns, "rows": [list(row) for row in r.rows[:50]]}

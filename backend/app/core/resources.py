@@ -69,6 +69,7 @@ DOC_TO_RESOURCE = {
     "operations_enquetes_ansd.md": ["ansd_enquetes"],
     "ensae_formation.md": ["ensae"],
     "faq_pratique_ansd.md": ["ansd_contact"],
+    "annuaire_population_2025.md": ["annuaire_population_2025"],
     # le glossaire est transversal : pas de publication source unique,
     # l'appariement thematique fait le travail
     "glossaire_indicateurs.md": [],
@@ -82,6 +83,8 @@ TABLE_TO_RESOURCE = {
     "pib": ["economie_2024"],
     "demographie": ["rgph5_rapports"],
     "population_nationale": ["rgph5_rapports"],
+    "population_2025": ["annuaire_population_2025"],
+    "structure_age_2025": ["annuaire_population_2025"],
     # "regions" volontairement absent : cette table n'apparait que par
     # jointure instrumentale, elle ne designe pas la publication d'origine
     "indicateurs_nationaux": [],   # resolu par le CODE de l'indicateur (ci-dessous)
