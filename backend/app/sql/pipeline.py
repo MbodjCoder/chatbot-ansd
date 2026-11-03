@@ -1,20 +1,14 @@
-"""
-Module Text-to-SQL inspire de DIN-SQL (Pourreza & Rafiei, 2023).
+"""Voie chiffrée : question -> requête SQL -> réponse rédigée.
 
-DIN-SQL atteint 85,3% d'Execution Accuracy sur Spider (Yu et al., 2018)
-par decomposition en 4 etapes, toutes reproduites ici :
-  1. Schema linking  : lier les entites de la question aux tables/colonnes
-  2. Classification  : requete simple / imbriquee / complexe
-  3. Generation      : SQL via LLM, few-shot specifiques au domaine ANSD
-  4. Auto-correction : execution, et en cas d'erreur, re-generation avec
-                       le message d'erreur (self-correction, max N essais)
+1. Gabarits déterministes pour les questions fréquentes (app/sql/templates.py).
+2. Sinon, génération par le modèle de langage, avec correction automatique en
+   cas d'erreur d'exécution (approche DIN-SQL, Pourreza et Rafiei 2023).
 
-Securite (guardrail technique) :
-  - connexion SQLite en LECTURE SEULE (mode ro)
-  - liste blanche : seuls les SELECT sont executes
-  - limite de lignes retournees
+Sécurité : lecture seule, requêtes SELECT uniquement.
+Les chiffres de la réponse viennent toujours de la base, jamais du modèle.
 """
 from __future__ import annotations
+
 import re
 import sqlite3
 from dataclasses import dataclass, field
@@ -23,41 +17,46 @@ from app.core.config import settings
 from app.llm.client import LLMClient
 from app.sql.sources import DataMartCurate, SourceStatistique
 
-SCHEMA_DESCRIPTION = """Tables disponibles (base statistique ANSD, donnees officielles) :
-- regions(id, nom, chef_lieu, superficie_km2) : les 14 regions du Senegal
-- demographie(region_id, annee, population) : population residente par region aux recensements (2013 = RGPH-4, 2023 = RGPH-5)
-- population_nationale(annee, population) : population totale aux recensements 1976, 1988, 2002, 2013, 2023
+SCHEMA_DESCRIPTION = """Tables disponibles (base statistique ANSD) :
+- regions(id, nom, chef_lieu, superficie_km2) : les 14 régions du Sénégal
+- demographie(region_id, annee, population) : population par région aux recensements (2013, 2023)
+- population_nationale(annee, population) : population totale aux recensements 1976 à 2023
+- population_2025(region_id, hommes, femmes, population, urbaine, rurale, part_urbaine) : projection ANSD 2025 par région
+- structure_age_2025(region_id, groupe_age, age_min, hommes, femmes, population) : projection ANSD 2025 par région et groupe d'âges ('0-4' ... '80+')
 - emploi(annee, trimestre, taux_chomage_elargi, taux_chomage_bit, taux_activite) : ENES trimestrielle (%, 2023-2025)
 - inflation(annee, taux_inflation) : variation annuelle moyenne de l'IHPC (%, 2019-2024)
-- pauvrete(region_id, taux_pauvrete, profondeur, severite, gini, conso_moyenne_fcfa) : EHCVM II 2021/2022 par region
-- pib(annee, croissance_reelle) : croissance du PIB reel (%, comptes nationaux, 2022-2024)
-- indicateurs_nationaux(code, libelle, valeur, unite, annee, source) : indicateurs de reference (esperance de vie, fecondite, urbanisation, pauvrete nationale...)
+- pauvrete(region_id, taux_pauvrete, profondeur, severite, gini, conso_moyenne_fcfa) : EHCVM II 2021/2022 par région
+- pib(annee, croissance_reelle) : croissance du PIB réel (%, 2022-2024)
+- indicateurs_nationaux(code, libelle, valeur, unite, annee, source) : indicateurs de référence
 
-Dictionnaire metier (schema linking) :
-- "taux de chomage" -> emploi.taux_chomage_elargi (par trimestre) ; "inflation", "prix" -> inflation.taux_inflation
-- "population", "habitants" -> demographie.population (par region) ou population_nationale (total pays)
-- "pauvrete" -> pauvrete.taux_pauvrete (region) ou indicateurs_nationaux code='pauvrete_nationale'
-- "croissance", "PIB" -> pib.croissance_reelle ; "esperance de vie", "fecondite", "urbanisation" -> indicateurs_nationaux (LIKE sur libelle)
-- noms de regions -> regions.nom (jointure sur region_id)
+Correspondances :
+- chômage -> emploi.taux_chomage_elargi ; inflation, prix -> inflation.taux_inflation
+- population -> demographie (régions, recensements), population_nationale (pays), population_2025 (projection)
+- hommes, femmes, urbain, rural -> population_2025 ; tranches d'âge -> structure_age_2025
+- pauvreté -> pauvrete.taux_pauvrete ou indicateurs_nationaux code='pauvrete_nationale'
+- noms de régions sans accents, comparés avec lower(r.nom), ex. lower(r.nom)='thies'
 """
 
-FEW_SHOTS = """Exemples (few-shot, domaine ANSD) :
-Q: Quelle etait la population de Dakar en 2023 ?
+FEW_SHOTS = """Exemples :
+Q: Quelle était la population de Dakar en 2023 ?
 SQL: SELECT r.nom, d.annee, d.population FROM demographie d JOIN regions r ON r.id=d.region_id WHERE lower(r.nom)='dakar' AND d.annee=2023;
-Q: Quel est le taux de chomage le plus recent ?
+Q: Quel est le taux de chômage le plus récent ?
 SQL: SELECT annee, trimestre, taux_chomage_elargi FROM emploi ORDER BY annee DESC, trimestre DESC LIMIT 1;
-Q: Classe les regions par taux de pauvrete decroissant.
+Q: Classe les régions par taux de pauvreté décroissant.
 SQL: SELECT r.nom, p.taux_pauvrete FROM pauvrete p JOIN regions r ON r.id=p.region_id ORDER BY p.taux_pauvrete DESC;
-Q: Quelle est l'esperance de vie au Senegal ?
-SQL: SELECT libelle, valeur, unite, annee FROM indicateurs_nationaux WHERE code='esperance_vie';
-Q: Comment la population du Senegal a-t-elle evolue depuis 1976 ?
+Q: Combien de femmes vivent à Kolda ?
+SQL: SELECT r.nom, 2025 AS annee, p.hommes, p.femmes, p.population FROM population_2025 p JOIN regions r ON r.id=p.region_id WHERE lower(r.nom)='kolda';
+Q: Comment la population du Sénégal a-t-elle évolué depuis 1976 ?
 SQL: SELECT annee, population FROM population_nationale ORDER BY annee;
 """
 
-SQL_SYSTEM = f"""SQL_GENERATION - Tu es un traducteur langage naturel -> SQL (SQLite).
+SQL_SYSTEM = f"""SQL_GENERATION - Tu traduis une question en une requête SQLite.
 {SCHEMA_DESCRIPTION}
 {FEW_SHOTS}
-Regles : genere UNE seule requete SELECT valide SQLite, sans commentaire, sans explication."""
+Règles : une seule requête SELECT valide, sans commentaire ni explication."""
+
+# Noms de régions affichés avec leurs accents (la base les stocke sans)
+NOMS_AFFICHES = {"Thies": "Thiès", "Kedougou": "Kédougou", "Sedhiou": "Sédhiou"}
 
 
 @dataclass
@@ -75,117 +74,92 @@ class TextToSQLPipeline:
                  db_path: str | None = None):
         self.llm = llm
         self.db_path = db_path or settings.database_path
-        # Port (décision #94) : la voie numérique dépend d'un contrat de source
-        # statistique, non d'un stockage figé. Adaptateur par défaut = entrepôt
-        # curaté ; une source distante (ODP) se branche en la passant ici.
+        # La voie dépend d'un contrat de source : une source distante
+        # (Plateforme Open Data) se branche en la passant ici.
         self.source: SourceStatistique = source or DataMartCurate(self.db_path)
 
-    # -- Etape securite : validation avant execution -----------------
     @staticmethod
     def _is_safe(sql: str) -> bool:
         s = sql.strip().rstrip(";").lower()
         if not s.startswith("select"):
             return False
-        forbidden = ["insert", "update", "delete", "drop", "alter", "attach",
+        interdits = ["insert", "update", "delete", "drop", "alter", "attach",
                      "pragma", "create", ";"]
-        return not any(f in s for f in forbidden)
+        return not any(f in s for f in interdits)
 
     def _execute(self, sql: str):
-        # délègue au port : le stockage (entrepôt curaté, ou source distante) est
-        # interchangeable, la voie ne connaît que le contrat.
         r = self.source.execute(sql)
-        return r.columns, r.rows
+        lignes = r.rows
+        if "nom" in r.columns:
+            i = r.columns.index("nom")
+            lignes = [tuple(NOMS_AFFICHES.get(v, v) if j == i else v for j, v in enumerate(ligne))
+                      for ligne in lignes]
+        return r.columns, lignes
 
-    def _extract_sql(self, text: str) -> str:
+    @staticmethod
+    def _extract_sql(text: str) -> str:
         m = re.search(r"```(?:sql)?\s*(.*?)```", text, re.S)
         sql = (m.group(1) if m else text).strip()
         return sql.split(";")[0].strip() + ";"
 
     def answer(self, question: str) -> SQLResult:
-        # Etape 0 (strategie hybride, decision #39) : gabarits deterministes
-        # d'abord — plus rapides (~1 ms, aucun appel LLM) et plus surs
-        # (EA 15/15) sur le perimetre du schema connu. Le LLM (DIN-SQL)
-        # couvre la longue traine des formulations hors gabarits.
         from app.sql.templates import template_sql
-        tpl = template_sql(question)
-        if tpl is not None:
+        gabarit = template_sql(question)
+        if gabarit is not None:
             try:
-                cols, rows = self._execute(tpl)
+                cols, rows = self._execute(gabarit)
                 if rows:
                     return SQLResult(answer=self._verbalize(question, cols, rows),
-                                     sql=tpl, rows=rows, columns=cols)
+                                     sql=gabarit, rows=rows, columns=cols)
             except sqlite3.Error:
-                pass  # gabarit inadapte : on tente la generation LLM
-        prompt, last_err = question, None
-        for attempt in range(settings.sql_max_retries + 1):
-            resp = self.llm.complete(SQL_SYSTEM, prompt,
-                                     temperature=settings.llm_temperature)
+                pass
+        prompt, derniere_erreur = question, None
+        for essai in range(settings.sql_max_retries + 1):
+            resp = self.llm.complete(SQL_SYSTEM, prompt, temperature=settings.llm_temperature)
             sql = self._extract_sql(resp.text)
             if not self._is_safe(sql):
-                return SQLResult(answer="Requete refusee : seules les lectures "
-                                        "(SELECT) sont autorisees.",
-                                 sql=sql, error="unsafe", retries=attempt)
+                return SQLResult(answer="Requête refusée : seules les lectures (SELECT) sont autorisées.",
+                                 sql=sql, error="unsafe", retries=essai)
             try:
                 cols, rows = self._execute(sql)
                 return SQLResult(answer=self._verbalize(question, cols, rows),
-                                 sql=sql, rows=rows, columns=cols, retries=attempt)
+                                 sql=sql, rows=rows, columns=cols, retries=essai)
             except sqlite3.Error as e:
-                # Auto-correction DIN-SQL : reinjecter l'erreur dans le prompt
-                last_err = str(e)
-                prompt = (f"{question}\nLa requete precedente `{sql}` a echoue "
-                          f"avec l'erreur : {last_err}. Corrige-la.")
-        return SQLResult(answer="La requete n'a pas pu etre executee sur la base ANSD.",
-                         error=last_err, retries=settings.sql_max_retries)
+                derniere_erreur = str(e)
+                prompt = (f"{question}\nLa requête précédente `{sql}` a échoué "
+                          f"avec l'erreur : {derniere_erreur}. Corrige-la.")
+        return SQLResult(answer="La requête n'a pas pu être exécutée sur la base.",
+                         error=derniere_erreur, retries=settings.sql_max_retries)
 
     @staticmethod
     def _verbalize(question: str, cols: list, rows: list) -> str:
-        """Verbalisation deterministe des resultats : le chiffre affiche
-        provient TOUJOURS de la base (jamais du LLM) -> hallucination
-        numerique structurellement impossible sur cette voie (guardrail).
-        Redaction en phrases naturelles par gabarits semantiques (une
-        colonne = un sens metier connu du schema ANSD)."""
-        # requete de repli "SELECT 1;" (aucune forme reconnue) : le dire
-        # honnetement plutot qu'afficher "1 : 1"
-        if cols == ["1"]:
-            return ("Je n'ai pas trouvé cette information dans la base de "
-                    "données. Reformulez votre question, ou consultez les "
-                    "publications proposées ci-dessous.")
+        if cols == ["1"]:                     # requête de repli « SELECT 1 »
+            return ("Je n'ai pas trouvé cette information dans la base de données. "
+                    "Reformulez votre question, ou consultez les publications proposées ci-dessous.")
         if not rows:
-            return "Aucune donnée ne correspond à cette question dans la base ANSD."
+            return "Aucune donnée ne correspond à cette question dans la base."
         if len(rows) == 1:
             phrase = _humanize_row(question, dict(zip(cols, rows[0])))
             if phrase:
                 return phrase
             paires = ", ".join(f"{_LIBELLES.get(c, c)} : {_fr(v)}"
                                for c, v in zip(cols, rows[0]) if v is not None)
-            # Ligne unique dont toutes les valeurs sont NULL (ex. indicateur non
-            # publie, ou requete LLM hors perimetre) : ne JAMAIS renvoyer une
-            # phrase vide « Selon les donnees officielles de l'ANSD, . » — le
-            # dire honnetement (P1 : aucune affirmation sans contenu verifiable).
-            if not paires:
-                return _INDISPONIBLE
-            return f"Selon les données officielles de l'ANSD, {paires}."
-        # plusieurs lignes, mais toutes leurs cellules sont vides : idem
+            return f"Selon les données de l'ANSD, {paires}." if paires else _INDISPONIBLE
         if not any(v is not None for r in rows for v in r):
             return _INDISPONIBLE
-        # Classement par region (col « nom » + une valeur) : phrase naturelle et
-        # sourcee ; le tableau/graphique complet est affiche en dessous (data).
         if cols and cols[0] == "nom" and len(cols) >= 2:
             phrase = _classement_regions(cols, rows)
             if phrase:
                 return phrase
-        lines = [" | ".join(cols)] + [" | ".join(str(v) for v in r) for r in rows[:15]]
-        more = f"\n... ({len(rows)} lignes au total)" if len(rows) > 15 else ""
-        return "Resultats (base ANSD) :\n" + "\n".join(lines) + more
+        lignes = [" | ".join(cols)] + [" | ".join(str(v) for v in r) for r in rows[:15]]
+        suite = f"\n... ({len(rows)} lignes au total)" if len(rows) > 15 else ""
+        return "Résultats (base ANSD) :\n" + "\n".join(lignes) + suite
 
 
-# ---------------------------------------------------------------- redaction
-# Message honnete unique quand la base ne contient pas le chiffre demande :
-# on n'affirme jamais dans le vide, on oriente vers les publications.
-_INDISPONIBLE = ("Cette donnée précise n'est pas disponible dans la base "
-                 "chiffrée de RAMA. Elle figure peut-être dans une publication "
-                 "de l'ANSD — voyez les sources proposées ci-dessous, ou "
-                 "reformulez votre question.")
+# ---------------------------------------------------------------- rédaction
+_INDISPONIBLE = ("Cette donnée précise n'est pas disponible dans la base chiffrée. "
+                 "Elle figure peut-être dans une publication de l'ANSD : voyez les "
+                 "sources proposées ci-dessous, ou reformulez votre question.")
 
 _LIBELLES = {
     "annee": "année", "trimestre": "trimestre", "nom": "région",
@@ -196,11 +170,13 @@ _LIBELLES = {
     "superficie_km2": "superficie", "densite_hab_km2": "densité",
     "libelle": "indicateur", "valeur": "valeur", "unite": "unité",
     "source": "source", "conso_moyenne_fcfa": "consommation moyenne",
+    "hommes": "hommes", "femmes": "femmes", "part_urbaine": "population urbaine (%)",
+    "tranche": "tranche d'âge", "effectif": "effectif", "part": "part (%)",
 }
 
 
 def _fr(v) -> str:
-    """Nombres a la francaise : milliers espaces, decimale virgule."""
+    """Nombre à la française : espace des milliers, virgule décimale."""
     if isinstance(v, int):
         return f"{v:,}".replace(",", " ")
     if isinstance(v, float):
@@ -209,8 +185,7 @@ def _fr(v) -> str:
 
 
 def _sup(question: str) -> str | None:
-    """Sens du superlatif demande ("plus" = maximum, "moins" = minimum),
-    en tenant compte des adjectifs qui inversent ("le plus faible")."""
+    """« plus » = maximum, « moins » = minimum ; « le plus faible » inverse le sens."""
     m = re.search(r"\b(plus|moins)\s*(\w*)", question.lower())
     if not m:
         return None
@@ -226,48 +201,65 @@ _RANK_META = {
     "gini": ("indice de Gini", "", "EHCVM II"),
     "superficie_km2": ("superficie", " km²", ""),
     "densite_hab_km2": ("densité", " habitants/km²", "RGPH-5, 2023"),
+    "part_urbaine": ("part de population urbaine", " %", "projection ANSD 2025"),
 }
 
 
 def _classement_regions(cols: list, rows: list) -> str | None:
-    """Phrase naturelle et sourcée pour un classement de régions (grounding :
-    chiffres issus de la base ; le détail complet est rendu par le tableau)."""
-    valcol = cols[-1]
-    meta = _RANK_META.get(valcol)
+    """Phrase d'introduction d'un classement ; le détail s'affiche en tableau.
+
+    Aucun nombre absent des résultats ne doit y figurer (contrôle de fidélité)."""
+    meta = _RANK_META.get(cols[-1])
     if not meta:
         return None
-    lbl, unite, src = meta
+    libelle, unite, source = meta
     try:
         v0, vN = rows[0][-1], rows[-1][-1]
     except (IndexError, TypeError):
         return None
     if v0 is None or vN is None:
         return None
-    sens = ("de la plus élevée à la plus faible" if v0 >= vN
-            else "de la plus faible à la plus élevée")
-    if valcol == "population":
-        sens = ("de la plus peuplée à la moins peuplée" if v0 >= vN
-                else "de la moins peuplée à la plus peuplée")
-    src_txt = f" ({src})" if src else ""
-    # NB : n'introduire AUCUN nombre absent des preuves (ex. le compte de lignes),
-    # sinon le rail de fidélité numérique rejette la réponse.
-    return (f"Voici le classement des régions du Sénégal par {lbl}"
-            f"{src_txt}, {sens}. En tête : **{rows[0][0]}** "
-            f"(**{_fr(rows[0][-1])}{unite}**). Le détail complet figure ci-dessous.")
+    if cols[-1] == "population":
+        sens = "de la plus peuplée à la moins peuplée" if v0 >= vN else "de la moins peuplée à la plus peuplée"
+    else:
+        sens = "de la plus élevée à la plus faible" if v0 >= vN else "de la plus faible à la plus élevée"
+    src = f" ({source})" if source else ""
+    return (f"Voici le classement des régions du Sénégal par {libelle}{src}, {sens}. "
+            f"En tête : **{rows[0][0]}** (**{_fr(v0)}{unite}**). Le détail complet figure ci-dessous.")
 
 
 def _humanize_row(question: str, d: dict) -> str | None:
-    """Phrase naturelle pour les formes de resultat connues du schema."""
+    """Phrase naturelle pour les formes de résultat connues."""
     annee = d.get("annee")
     quand = f" en {annee}" if annee else ""
     sup = _sup(question)
-    # indicateurs nationaux : (libelle, valeur, unite, annee)
-    if "libelle" in d and "valeur" in d:
-        unite = d.get("unite") or ""
-        unite = {"pourcent": "%", "%": "%"}.get(unite, unite)
-        return f"{d['libelle']} : **{_fr(d['valeur'])} {unite}**".rstrip() + \
-               (f" ({annee}, source ANSD)." if annee else " (source ANSD).")
     nom = d.get("nom")
+    lieu = f"la région de **{nom}**" if nom else "le Sénégal"
+
+    if "libelle" in d and "valeur" in d:
+        unite = {"pourcent": "%"}.get(d.get("unite") or "", d.get("unite") or "")
+        return (f"{d['libelle']} : **{_fr(d['valeur'])} {unite}**".rstrip()
+                + (f" ({annee}, source ANSD)." if annee else " (source ANSD)."))
+
+    # projections démographiques 2025
+    if "tranche" in d and d.get("effectif") is not None:
+        return (f"En 2025, {lieu} compte **{_fr(d['effectif'])} personnes de {d['tranche']}**, "
+                f"soit **{_fr(d['part'])} %** de sa population (projection ANSD).")
+    if "hommes" in d and "femmes" in d:
+        return (f"En 2025, {lieu} compte **{_fr(d['femmes'])} femmes** et "
+                f"**{_fr(d['hommes'])} hommes**, soit **{_fr(d['population'])} habitants** "
+                "(projection ANSD).")
+    if "part_urbaine" in d:
+        if nom and sup:
+            adj = "la plus urbanisée" if sup == "plus" else "la moins urbanisée"
+            return (f"La région {adj} est **{nom}** : **{_fr(d['part_urbaine'])} %** "
+                    "de sa population vit en milieu urbain en 2025 (projection ANSD).")
+        ou = f"de la région de **{nom}**" if nom else "du Sénégal"
+        return (f"En 2025, **{_fr(d['part_urbaine'])} %** de la population {ou} "
+                "vit en milieu urbain (projection ANSD).")
+    if annee == 2025 and "population" in d:
+        return f"En 2025, {lieu} compte **{_fr(d['population'])} habitants** (projection ANSD)."
+
     if nom and "population" in d:
         if sup:
             adj = "la plus peuplée" if sup == "plus" else "la moins peuplée"
@@ -285,7 +277,8 @@ def _humanize_row(question: str, d: dict) -> str | None:
     if nom and "superficie_km2" in d:
         return f"La région de **{nom}** s'étend sur **{_fr(d['superficie_km2'])} km²**."
     if nom and "densite_hab_km2" in d:
-        return f"La densité de population de la région de **{nom}** est de **{_fr(d['densite_hab_km2'])} habitants/km²** (RGPH-5)."
+        return (f"La densité de population de la région de **{nom}** est de "
+                f"**{_fr(d['densite_hab_km2'])} habitants/km²** (RGPH-5).")
     if "taux_chomage_elargi" in d:
         t = d.get("trimestre")
         periode = f"au {t}ᵉ trimestre {annee}" if t and annee else quand.strip() or "à la dernière enquête"

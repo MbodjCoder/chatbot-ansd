@@ -61,7 +61,8 @@ _DOMAIN_STEMS = [
     "population", "habitant", "peupl", "demograph", "recensement", "rgph",
     "fecondit", "mortalit", "natalit", "naissance", "deces", "mariage",
     "nuptialit", "migration", "migrant", "urbanisation", "urbain", "rural",
-    "menage", "esperance", "age", "sexe", "masculinit",
+    "menage", "esperance", "age", "ans", "sexe", "masculinit", "enfant",
+    "jeune", "homme", "projection",
     # --- Géographie / territoire (régions + zones naturelles) ---
     "superfici", "densit", "surface", "region", "territoire", "zone",
     "casamance", "saloum", "ferlo", "oriental",
