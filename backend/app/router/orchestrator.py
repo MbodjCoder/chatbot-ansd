@@ -1,21 +1,10 @@
-"""
-Orchestrateur de routage a deux niveaux (contribution centrale du memoire).
+"""Choix de la voie de réponse : SQL (chiffre), RAG (document) ou HYBRID (les deux).
 
-Formalisation : f(q) -> {SQL, RAG, HYBRID}
+1. Classifieur rapide : TF-IDF et régression logistique, entraîné sur
+   data/datasets/routing_dataset.csv (scripts/train_router.py).
+2. Si sa confiance est inférieure au seuil, le modèle de langage tranche.
 
-Niveau 1 - classifieur supervise leger :
-  * production : DeBERTa-v3 fine-tune (He et al., 2021) sur le corpus annote
-    data/datasets/routing_dataset.csv
-  * demo       : TF-IDF (1-2 grammes, caracteres+mots) + regression logistique
-    (baseline reproductible sans GPU ; meme protocole d'evaluation)
-Niveau 2 - fallback LLM :
-  si la confiance du classifieur < seuil (0.85), le LLM tranche via un
-  prompt specialise (LLM-as-router). Ce schema combine l'efficacite
-  computationnelle du niveau 1 (~ms) et la flexibilite du niveau 2
-  pour les cas ambigus.
-
-L'evaluation du routage (accuracy, matrice de confusion, test du chi2)
-est implementee dans app/evaluation/evaluate_router.py.
+Évaluation : app/evaluation/evaluate_router.py.
 """
 from __future__ import annotations
 import json
@@ -43,8 +32,7 @@ class RouteDecision:
 
 
 class DemoClassifier:
-    """Niveau 1 en mode demo : TF-IDF + regression logistique calibree.
-    Entraine par scripts/train_router.py sur le corpus annote."""
+    """Classifieur TF-IDF et régression logistique."""
 
     def __init__(self, artifact: str):
         import joblib
@@ -58,8 +46,7 @@ class DemoClassifier:
 
 
 class DebertaClassifier:
-    """Niveau 1 en production : DeBERTa-v3 fine-tune (sequence classification).
-    Le script de fine-tuning est fourni dans scripts/finetune_deberta.py."""
+    """Classifieur DeBERTa-v3 affiné, si le modèle est installé (optionnel)."""
 
     def __init__(self, model_dir: str):
         from transformers import pipeline
@@ -82,19 +69,17 @@ class Orchestrator:
             try:
                 self.classifier = DebertaClassifier(settings.router_model)
             except Exception:
-                # degradation controlee : DeBERTa absent -> classifieur TF-IDF
-                # (meme corpus, meme protocole) plutot que LLM-as-router seul
-                # (latence et cout par question superieurs sinon)
+                # DeBERTa absent : classifieur TF-IDF
                 self.classifier = (DemoClassifier(str(artifact))
                                    if artifact.exists() else None)
 
     def route(self, question: str) -> RouteDecision:
-        # Niveau 1 : classifieur rapide
+        # classifieur rapide
         if self.classifier is not None:
             label, conf = self.classifier.predict(question)
             if conf >= settings.router_confidence_threshold:
                 return RouteDecision(label, conf, "classifier")
-        # Niveau 2 : fallback LLM pour les cas ambigus
+        # cas ambigu : le modèle de langage tranche
         resp = self.llm.complete(ROUTE_SYSTEM, question, temperature=0.0)
         try:
             data = json.loads(resp.text)

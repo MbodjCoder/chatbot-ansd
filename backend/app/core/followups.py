@@ -1,20 +1,13 @@
-"""
-Suggestions de questions de suivi contextuelles.
+"""Questions de suivi proposées après chaque réponse.
 
-Apres chaque reponse, le chatbot propose 2-3 questions pertinentes liees au
-sujet courant, en excluant ce qui a deja ete demande dans la session
-(historique). Technique standard des interfaces conversationnelles pour
-guider la decouverte de l'offre (mixed-initiative interaction ; reduit le
-cout de formulation pour l'usager, Horvitz 1999).
-
-Deterministe : le sujet est deduit des memes signaux traçables que les
-liens (table SQL interrogee, document cite, lexique de la question).
+Le sujet est déduit de la table interrogée, du document cité et des mots de la
+question. Une suggestion n'est retenue que si le chatbot sait y répondre.
 """
 from __future__ import annotations
 import re
 import unicodedata
 
-# table SQL / document -> sujet
+# table ou document -> sujet
 TABLE_TOPIC = {
     "emploi": "emploi", "inflation": "prix", "pauvrete": "pauvrete",
     "pib": "economie", "demographie": "demographie",
@@ -104,7 +97,7 @@ SUGGESTIONS: dict[str, list[str]] = {
 def _fold(text: str) -> str:
     t = "".join(c for c in unicodedata.normalize("NFD", text.lower())
                 if unicodedata.category(c) != "Mn")
-    t = re.sub(r"[-'’?!.,:;]+", " ", t)   # ponctuation et apostrophes
+    t = re.sub(r"[-'’?!.,:;]+", " ", t)
     return re.sub(r"\s+", " ", t).strip()
 
 
@@ -123,16 +116,12 @@ def detect_topic(question: str, sql: str | None, doc_sources: list[str]) -> str:
 
 
 def _too_close(key: str, seen: set[str]) -> bool:
-    """Vrai si `key` est deja vue ou quasi identique a une entree de `seen`."""
+    """Vrai si `key` est déjà vue ou quasi identique à une entrée de `seen`."""
     return key in seen or any(key[:30] in h or h[:30] in key for h in seen)
 
 
-# ---- Validation de COUVERTURE des suggestions -----------------------------
-# Une suggestion ne doit jamais mener a une reponse vide ou a un refus. On
-# ecarte donc toute suggestion qui demande un CHIFFRE sur un theme dont la base
-# ne contient aucune donnee chiffree (agriculture-rendement, sante detaillee,
-# commerce exterieur, etc.). Les demandes DOCUMENTAIRES (« ou trouver / quelles
-# enquetes sur X ») restent valides : la voie catalogue (285 fiches) y repond.
+# Une suggestion ne doit jamais mener à une réponse vide : pas de demande de
+# chiffre sur un thème absent de la base. Les demandes de documents restent valides.
 _HORS_PERIMETRE_CHIFFRE = (
     "rendement", "riz", "mais", "arachide", " mil ", "sorgho", "culture",
     "recolte", "hectare", "tonne", "elevage", "cheptel", "betail",
@@ -153,32 +142,25 @@ _DEMANDE_DOC = re.compile(
     r"informations sur|je veux)\b")
 
 
-# Indicateurs disponibles PAR REGION dans la base (les seuls pour lesquels une
-# question regionale a une reponse) : population, pauvrete, superficie, densite,
-# Gini. Tout le reste (chomage, inflation, PIB/croissance, accroissement,
-# urbanisation, esperance de vie...) n'existe qu'au niveau NATIONAL.
+# indicateurs disponibles par région ; les autres sont seulement nationaux
 _THEME_REGIONAL = ("population", "habitant", "peupl", "pauvre", "pauvrete",
                    "superficie", "dense", "densite", "gini")
 _QUESTION_REGIONALE = re.compile(r"\bregion|par region|dans (la|le|l ) region")
 
 
 def is_answerable(s: str) -> bool:
-    """Vrai si la suggestion mene plausiblement a une vraie reponse (chiffre du
-    schema, sujet documentaire connu, ou acces au catalogue) ; faux si elle
-    demande une valeur hors du perimetre chiffre reel."""
+    """Vrai si la suggestion mène à une vraie réponse (chiffre de la base, sujet
+    documentaire connu ou catalogue)."""
     q = _fold(s)
     documentaire = bool(_DEMANDE_DOC.search(q))
-    # 1) demande de VALEUR sur un theme sans donnee chiffree, non documentaire : rejet
+    # chiffre demandé sur un thème absent de la base
     if (_DEMANDE_VALEUR.search(q) and not documentaire
             and any(k in q for k in _HORS_PERIMETRE_CHIFFRE)):
         return False
-    # 1bis) question REGIONALE sur un indicateur national-only : rejet (sinon on
-    # presenterait un chiffre national comme s'il etait regional)
+    # question régionale sur un indicateur seulement national
     if _QUESTION_REGIONALE.search(q) and not any(w in q for w in _THEME_REGIONAL):
         return False
-    # 2) acceptation positive : gabarit SQL connu, question documentaire, ou
-    #    sujet thematique reconnu (KEYWORD_TOPIC/doc). "accueil" = aucun sujet
-    #    identifie -> on n'accepte que si c'est documentaire.
+    # accepté : gabarit SQL connu, question documentaire ou sujet reconnu
     from app.sql.templates import template_sql
     if template_sql(s) is not None:
         return True
@@ -190,9 +172,7 @@ def is_answerable(s: str) -> bool:
 def suggest(question: str, sql: str | None, doc_sources: list[str],
             history_questions: list[str], k: int = 3,
             avoid: set[str] | None = None) -> list[str]:
-    """2-3 questions de suivi du meme sujet, jamais deja posees ni
-    equivalentes a la question courante. `avoid` = cles (folded[:60]) deja
-    proposees dans la session, pour ne jamais reafficher deux fois la meme."""
+    """Questions de suivi du même sujet, ni déjà posées ni déjà proposées (`avoid`)."""
     topic = detect_topic(question, sql, doc_sources)
     seen = {_fold(h)[:60] for h in history_questions} | {_fold(question)[:60]}
     seen |= (avoid or set())
@@ -208,12 +188,7 @@ def suggest(question: str, sql: str | None, doc_sources: list[str],
     return out
 
 
-# -- Generation dynamique par LLM (fournisseur rapide) --------------------
-# Les gabarits ci-dessus couvrent chaque sujet, mais restent generiques et
-# finissent par se repeter au fil d'une longue conversation. Sur un
-# fournisseur rapide, on genere des suggestions *ancrees dans la reponse
-# reelle* : elles evoluent a chaque tour et prolongent concretement ce qui
-# vient d'etre dit (chiffre voisin, comparaison, evolution, methode, source).
+# Suggestions rédigées par le modèle de langage, à partir de la réponse donnée
 SUGGEST_SYSTEM = (
     "Tu es le moteur de suggestions d'un assistant statistique officiel de "
     "l'ANSD (Agence Nationale de la Statistique et de la Démographie du "
@@ -235,10 +210,7 @@ SUGGEST_SYSTEM = (
 
 def suggest_llm(complete, question: str, answer: str,
                 avoid: set[str], k: int = 3) -> list[str]:
-    """Genere k questions de suivi ancrees dans la reponse, via le LLM.
-    Filtre : interrogatives, longueur plausible, jamais deja vues/posees.
-    Repli silencieux (liste vide) en cas d'echec -> l'appelant complete
-    avec les gabarits deterministes."""
+    """k questions de suivi tirées de la réponse ; liste vide en cas d'échec."""
     resp = complete(
         SUGGEST_SYSTEM.replace("{k}", str(k)),
         f"QUESTION : {question}\nRÉPONSE : {answer[:1200]}",
@@ -253,10 +225,10 @@ def suggest_llm(complete, question: str, answer: str,
         mots = s.split()
         if not (4 <= len(mots) <= 18) or len(s) > 130:
             continue
-        # pas de meta / preambule injecte par le modele
+        # commentaires du modèle écartés
         if re.match(r"(voici|bien sur|je peux|par exemple|question)", s.lower()):
             continue
-        # couverture : ne jamais proposer une question qui menerait au vide/refus
+        # seulement des questions auxquelles le chatbot sait répondre
         if not is_answerable(s):
             continue
         key = _fold(s)[:60]

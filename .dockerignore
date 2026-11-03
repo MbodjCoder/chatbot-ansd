@@ -1,6 +1,4 @@
-# Contexte de build = racine du dépôt. On exclut tout ce qui ne doit PAS
-# entrer dans l'image : secrets, logs, tests, docs, artefacts.
-# CRITIQUE : **/.env empêche la clé API réelle d'être copiée dans l'image.
+# Exclus de l'image : secrets (.env), journaux, tests, documentation.
 **/.env
 **/.env.*
 !**/.env.example

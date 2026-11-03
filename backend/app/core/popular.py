@@ -1,16 +1,8 @@
-"""
-Questions les plus recherchees, par categorie thematique.
+"""Questions les plus posées, par thème (endpoint /api/popular).
 
-Justification (memoire, principe d'initiative mixte — Horvitz 1999) : proposer a
-l'usager les questions reellement les plus posees reduit son effort de formulation
-et l'oriente vers les donnees pertinentes. Le classement n'est pas arbitraire : il
-est *calcule* sur la telemetrie reelle du service (interactions.jsonl), voie et
-guardrail compris, en excluant les actes sociaux et les refus (qui ne sont pas des
-recherches d'information). Une base curatee garantit la couverture et une
-formulation soignee ; la frequence observee ordonne l'ensemble.
-
-Confidentialite (Principe 6, Nations Unies 2014) : on n'agrege que le TEXTE des
-questions et leur frequence ; aucun identifiant, aucune donnee personnelle.
+Une liste de questions de référence garantit la couverture ; le journal d'usage
+les classe par fréquence. Seuls le texte des questions et leur fréquence sont
+utilisés.
 """
 from __future__ import annotations
 
@@ -21,9 +13,7 @@ from collections import Counter
 
 from app.core import telemetry
 
-# --- categories : libelle grand public + icone + mots-cles de classification ---
-# L'ordre des cles compte : une question est classee dans la PREMIERE categorie
-# dont un mot-cle correspond (les plus specifiques d'abord).
+# Thèmes : une question va dans le premier thème dont un mot-clé correspond.
 CATEGORIES: list[dict] = [
     {
         "id": "population", "label": "Population & démographie", "icon": "👥",
@@ -66,8 +56,7 @@ CATEGORIES: list[dict] = [
         ],
     },
     {
-        # Prix & inflation fusionnés ici : l'économie couvre PIB, croissance,
-        # comptes nationaux ET prix/inflation (une seule entrée thématique).
+        # l'économie couvre aussi les prix et l'inflation
         "id": "economie", "label": "Économie & croissance", "icon": "📈",
         "hint": "PIB, croissance, comptes nationaux, prix & inflation",
         "keywords": ["pib", "croissance", "comptes nationaux", "economie",
@@ -99,11 +88,10 @@ CATEGORIES: list[dict] = [
 ]
 
 _CACHE: dict = {"ts": 0.0, "data": None}
-_TTL = 60.0  # s : le classement est recalcule au plus une fois par minute
+_TTL = 60.0  # classement recalculé au plus une fois par minute
 
 
-# tournures interrogatives de tete, pur bruit de formulation : les retirer permet
-# de fusionner « Population du Senegal en 2023 ? » et « Quelle est la population… ».
+# débuts de question retirés pour regrouper les formulations équivalentes
 _LEADS = [
     "qu est ce que", "qu est ce qui", "quelle est la", "quelle est le",
     "quel est le", "quel est la", "quelles sont les", "quels sont les",
@@ -115,7 +103,7 @@ _LEADS = [
 
 
 def _base(s: str) -> str:
-    """Minuscules, sans accents, sans ponctuation finale, espaces reduits."""
+    """Minuscules, sans accents ni ponctuation finale."""
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     s = s.lower().strip()
@@ -126,8 +114,7 @@ def _base(s: str) -> str:
 
 
 def _norm(s: str) -> str:
-    """Cle de regroupement : forme de base, tournure interrogative de tete retiree,
-    pour que deux formulations de la meme recherche comptent ensemble."""
+    """Clé de regroupement de deux formulations d'une même recherche."""
     s = _base(s)
     changed = True
     while changed:
@@ -149,20 +136,17 @@ def _classify(qn: str) -> str | None:
 
 
 def compute(limit: int = 6) -> dict:
-    """Retourne, par categorie, les questions les plus recherchees, classees par
-    frequence reelle observee. Les questions curatees garantissent la couverture ;
-    les comptes issus de la telemetrie determinent l'ordre et ajoutent les
-    formulations reelles frequentes absentes de la base curatee."""
+    """Questions les plus posées, par thème, classées par fréquence observée."""
     now = time.time()
     if _CACHE["data"] is not None and now - _CACHE["ts"] < _TTL:
         return _CACHE["data"]
 
     inter = telemetry._read("interactions.jsonl")
-    # comptes par (categorie, cle normalisee) ; on garde la meilleure forme d'affichage
+    # comptes par (thème, clé) et meilleure formulation à afficher
     counts: Counter = Counter()
     display: dict[tuple[str, str], str] = {}
     for r in inter:
-        # exclure les actes sociaux et les refus : ce ne sont pas des recherches
+        # échanges courants et refus exclus
         if r.get("route") == "CHAT":
             continue
         if r.get("guardrail", "ok") != "ok":
@@ -176,7 +160,6 @@ def compute(limit: int = 6) -> dict:
             continue
         key = (cat, qn)
         counts[key] += 1
-        # forme d'affichage : la plus « propre » vue (avec accents / majuscule initiale)
         prev = display.get(key)
         if prev is None or _cleanliness(q) > _cleanliness(prev):
             display[key] = q
@@ -184,21 +167,20 @@ def compute(limit: int = 6) -> dict:
     out_cats = []
     for cat in CATEGORIES:
         cid = cat["id"]
-        # 1) questions curatees, avec leur compte reel (0 si jamais posee)
+        # questions de référence, avec leur compte
         seen: set[str] = set()
         items: list[dict] = []
         for seed in cat["seeds"]:
             kn = _norm(seed)
             seen.add(kn)
             items.append({"q": seed, "n": counts.get((cid, kn), 0), "seed": True})
-        # 2) formulations reelles frequentes hors base curatee (bruit ecarte : n>=3)
+        # autres formulations fréquentes (au moins 3 occurrences)
         extras = [((c, k), n) for (c, k), n in counts.items()
                   if c == cid and k not in seen and n >= 3]
         extras.sort(key=lambda x: -x[1])
         for (c, k), n in extras[:4]:
             items.append({"q": _polish(display[(c, k)]), "n": n, "seed": False})
-        # tri final : par frequence reelle decroissante, les curatees non posees
-        # gardant une visibilite (elles restent, mais apres les vraies populaires)
+        # tri par fréquence ; les questions de référence jamais posées restent en fin
         items.sort(key=lambda it: (-it["n"], not it["seed"]))
         total = sum(it["n"] for it in items)
         out_cats.append({
@@ -208,7 +190,7 @@ def compute(limit: int = 6) -> dict:
                           for it in items[:limit]],
         })
 
-    # ordonner les categories par volume total de recherches (les plus actives d'abord)
+    # thèmes les plus actifs d'abord
     out_cats.sort(key=lambda c: -c["total_recherches"])
     data = {"categories": out_cats,
             "note": "Classement calculé sur la télémétrie réelle du service "
@@ -218,8 +200,7 @@ def compute(limit: int = 6) -> dict:
 
 
 def _polish(s: str) -> str:
-    """Presentation : majuscule initiale, espaces propres. On ne touche pas a la
-    ponctuation (une consigne « je veux… » ne prend pas de « ? »)."""
+    """Majuscule initiale et espaces normalisés."""
     s = s.strip()
     if s and s[0].islower():
         s = s[0].upper() + s[1:]
@@ -227,13 +208,12 @@ def _polish(s: str) -> str:
 
 
 def _cleanliness(s: str) -> int:
-    """Score heuristique de « propreté » d'une formulation pour l'affichage :
-    presence d'accents et d'une majuscule initiale = plus lisible."""
+    """Lisibilité d'une formulation (accents, majuscule initiale)."""
     score = 0
     if s[:1].isupper():
         score += 1
     if any(unicodedata.combining(c) for c in unicodedata.normalize("NFD", s)):
-        score += 2  # a des accents
+        score += 2
     if s.rstrip().endswith("?"):
         score += 1
     return score

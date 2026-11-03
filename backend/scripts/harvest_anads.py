@@ -1,19 +1,8 @@
-"""
-Recolte du catalogue complet de l'ANADS (anads.ansd.sn).
+"""Récolte le catalogue ANADS (anads.ansd.sn) par son API publique : identifiant,
+titre, producteur, période, collection et lien de chaque fiche.
 
-L'ANADS est une instance NADA (outil de catalogage de microdonnees de la
-Banque mondiale) dont l'API de recherche est publique. Ce script recolte
-les metadonnees de TOUTES les etudes du catalogue (285 au 2026-07-06) :
-identifiant, titre, pays, producteur, periode, collection thematique,
-nombre de variables, URL directe de la fiche.
-
-Les fichiers de microdonnees eux-memes sont soumis a une demande d'acces
-sur la plateforme (licence) : le chatbot oriente l'usager vers la fiche
-exacte, ou il peut soumettre sa demande — c'est precisement le parcours
-officiel voulu par l'ANSD.
-
-Usage : python scripts/harvest_anads.py
 Sortie : data/anads_catalogue.json
+Usage  : python scripts/harvest_anads.py
 """
 import json
 import ssl
@@ -32,7 +21,7 @@ ctx.verify_mode = ssl.CERT_NONE
 def fetch(page: int, ps: int = 100) -> dict:
     # NADA pagine par `page` (le parametre `from`/`offset` est ignore)
     req = urllib.request.Request(f"{API}?ps={ps}&page={page}",
-                                 headers={"User-Agent": "RAMA-ANSD/1.0"})
+                                 headers={"User-Agent": "Chatbot-ANSD/1.0"})
     with urllib.request.urlopen(req, timeout=40, context=ctx) as r:
         return json.load(r)["result"]
 

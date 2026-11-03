@@ -1,6 +1,6 @@
 {
-  "name": "Rama — Statistiques du Sénégal",
-  "short_name": "Rama",
+  "name": "Chatbot ANSD — Statistiques du Sénégal",
+  "short_name": "Chatbot ANSD",
   "description": "Posez vos questions sur les statistiques du Sénégal : chiffres, comparaisons et documents, d'après les données publiques de l'ANSD.",
   "lang": "fr",
   "dir": "ltr",
@@ -12,7 +12,7 @@
   "theme_color": "#0e79c4",
   "categories": ["education", "government", "productivity"],
   "icons": [
-    { "src": "/rama.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/logo.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
     { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
     { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
   ]

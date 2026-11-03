@@ -25,3 +25,9 @@ docs/*.docx
 Thumbs.db
 .idea/
 .vscode/
+
+# Documents de travail du mémoire : conservés en local, non publiés
+CONTEXTE-PROJET.md
+docs/*
+!docs/Chatbot_ANSD_Etat_et_Besoins.docx
+!docs/Chatbot_ANSD_Etat_et_Besoins.pdf

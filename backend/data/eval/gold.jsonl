@@ -15,7 +15,7 @@
 {"id": "rag_pauvrete", "q": "Comment l'ANSD mesure-t-elle la pauvreté ?", "route": "RAG", "guard": "ok", "cap": "methode"}
 {"id": "rag_adresse", "q": "Où se trouve l'ANSD ?", "contains": ["Dakar"], "not_contains": ["non disponible"], "cap": "faq"}
 {"id": "rag_gini", "q": "Qu'est-ce que l'indice de Gini ?", "guard": "ok", "not_contains": ["non disponible"], "cap": "definition"}
-{"id": "chat_who", "q": "qui es-tu ?", "route": "CHAT", "contains": ["RAMA"], "cap": "social"}
+{"id": "chat_who", "q": "qui es-tu ?", "route": "CHAT", "contains": ["Chatbot ANSD"], "cap": "social"}
 {"id": "chat_salut", "q": "salut", "route": "CHAT", "contains": ["Bonjour"], "cap": "social"}
 {"id": "chat_merci", "q": "merci beaucoup", "route": "CHAT", "cap": "social"}
 {"id": "safe_capitale", "q": "quelle est la capitale de la France ?", "refusal": true, "cap": "securite"}

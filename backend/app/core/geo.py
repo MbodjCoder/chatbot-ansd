@@ -1,24 +1,9 @@
-"""
-Garde géographique : garantir qu'une question portant sur un lieu reçoit une
-réponse pour l'ENTITÉ RÉELLEMENT DEMANDÉE — jamais un chiffre national (ou d'une
-autre entité) substitué en silence.
+"""Portée géographique d'une question : jamais le chiffre d'un autre lieu.
 
-Motivation (système « incontestable », P1 — ancrage vérifiable). Défaut corrigé :
-« Quelle est la population de la Casamance ? » renvoyait la population NATIONALE
-(18 126 390) — un chiffre vrai, mais qui ne répond PAS à la question. La règle
-générale : si le lieu demandé n'est pas résoluble à la maille publiée par l'ANSD
-(national + 14 régions), on ne substitue rien — on répond honnêtement.
-
-Trois cas résolus :
-  - RÉGION administrative connue      -> voie normale (le pipeline SQL répond) ;
-  - ZONE naturelle connue (agrégat)   -> réponse correcte par agrégation des
-                                         régions qui la composent (ex. Casamance
-                                         = Ziguinchor + Sédhiou + Kolda) ;
-  - LIEU non résolu (pays voisin,
-    ville, département, zone inconnue) -> réponse honnête, sans chiffre substitué.
-
-Tout le reste (question nationale ou non géographique) est laissé au pipeline
-existant : ce module n'intervient QUE pour les cas « zone » et « inconnu ».
+  région connue          -> traitement normal
+  zone naturelle connue  -> somme des régions qui la composent (Casamance =
+                            Ziguinchor + Sédhiou + Kolda)
+  lieu inconnu           -> réponse honnête, sans chiffre (ville, pays voisin...)
 """
 from __future__ import annotations
 
@@ -27,7 +12,7 @@ import unicodedata
 
 from app.sql.templates import REGIONS
 
-# Libellés d'affichage (accentués) des 14 régions administratives.
+# noms affichés des 14 régions
 REGION_DISPLAY: dict[str, str] = {
     "dakar": "Dakar", "thies": "Thiès", "diourbel": "Diourbel",
     "saint-louis": "Saint-Louis", "ziguinchor": "Ziguinchor",
@@ -36,9 +21,7 @@ REGION_DISPLAY: dict[str, str] = {
     "kedougou": "Kédougou", "kaffrine": "Kaffrine", "sedhiou": "Sédhiou",
 }
 
-# Zones NATURELLES (non administratives) = agrégats de régions officielles.
-# Une population/superficie de zone est la SOMME de ses régions (agrégation
-# valide) ; un taux (pauvreté, densité, Gini) ne s'additionne pas (voir chatbot).
+# zones naturelles : population et superficie s'additionnent, pas les taux
 ZONES: dict[str, list[str]] = {
     "casamance": ["ziguinchor", "sedhiou", "kolda"],
     "sine saloum": ["fatick", "kaolack", "kaffrine"],
@@ -47,15 +30,14 @@ ZONES: dict[str, list[str]] = {
     "senegal oriental": ["tambacounda", "kedougou"],
 }
 
-# Alias d'un objet locatif vers une région administrative.
+# alias vers une région
 ALIASES: dict[str, str] = {"capitale": "dakar"}
 
-# Indicateurs qui ont un sens PAR LIEU (les seuls où un lieu est pertinent).
+# indicateurs publiés par lieu
 _GEO_KW = ("population", "habitant", "peupl", "recensement", "demograph",
            "pauvre", "pauvrete", "densite", "dense", "superficie", "gini")
 
-# Objets locatifs qui ne désignent PAS un lieu résoluble à refuser : termes
-# nationaux/génériques et sous-populations démographiques courantes.
+# termes qui ne désignent pas un lieu (national, générique, groupe de population)
 _STOP = {
     "senegal", "pays", "nation", "national", "nationale", "territoire",
     "ensemble", "total", "totale", "region", "regions", "milieu", "monde",
@@ -69,8 +51,7 @@ _STOP = {
     "riches", "moyenne", "moyen",
 }
 
-# Lieux fréquents NON couverts à la maille régionale (pays voisins, grandes
-# villes) : permet de refuser proprement même en minuscules (sans majuscule).
+# lieux fréquents non couverts (pays voisins, grandes villes)
 _KNOWN_NON_REGION = {
     "gambie", "mali", "mauritanie", "guinee", "guinee-bissau", "bissau",
     "cote d ivoire", "cap-vert", "cap vert", "france", "europe", "afrique",
@@ -78,8 +59,7 @@ _KNOWN_NON_REGION = {
     "mbacke", "richard-toll", "joal", "dagana", "podor", "bignona", "kebemer",
 }
 
-# Prépositions FORTEMENT géographiques : l'objet est un lieu quelle que soit
-# sa casse ("à Touba", "dans le Ferlo", "région de X").
+# prépositions de lieu (« à Touba », « dans le Ferlo »)
 _STRONG = {"a", "au", "aux", "dans", "dans le", "dans la", "dans l",
            "region de", "ville de", "departement de", "commune de", "zone de"}
 
@@ -100,8 +80,7 @@ def _fold(s: str) -> str:
 
 
 def indicator(question: str) -> str:
-    """Type d'indicateur géographique : 'population', 'superficie' (agrégeables
-    sur une zone) ou 'other' (taux — non agrégeable)."""
+    """'population' ou 'superficie' (additionnables), sinon 'other' (taux)."""
     qf = _fold(question)
     if any(k in qf for k in ("population", "habitant", "peupl", "recensement",
                              "demograph")):
@@ -112,37 +91,31 @@ def indicator(question: str) -> str:
 
 
 def scope(question: str) -> dict:
-    """Classe la portée géographique de la question.
-
-    Renvoie un dict :
-      {"kind": "na"}                         question non géographique -> ignorer
-      {"kind": "region", "region": r}        région connue -> voie normale
-      {"kind": "national"}                   national/générique -> voie normale
-      {"kind": "zone", "zone": z, "regions": [...]}
-      {"kind": "unknown", "place": "..."}    lieu non résoluble -> refus honnête
+    """Portée de la question :
+      {"kind": "na"} | {"kind": "region", "region": r} | {"kind": "national"}
+      {"kind": "zone", "zone": z, "regions": [...]} | {"kind": "unknown", "place": "..."}
     """
     qf = _fold(question)
     if not any(k in qf for k in _GEO_KW):
         return {"kind": "na"}
 
-    # 1) région administrative nommée (résolue d'abord, minuscules comprises)
+    # région nommée
     reg = next((r for r in REGIONS if re.search(r"\b" + re.escape(r) + r"\b", qf)),
                None)
     if reg:
         return {"kind": "region", "region": reg}
 
-    # 2) zone naturelle connue (agrégat de régions)
+    # zone naturelle
     for z, members in ZONES.items():
         if re.search(r"\b" + re.escape(z) + r"\b", qf):
             return {"kind": "zone", "zone": z, "regions": members}
 
-    # 3) alias (« capitale » -> Dakar)
+    # alias (« capitale » -> Dakar)
     for a, r in ALIASES.items():
         if re.search(r"\b" + re.escape(a) + r"\b", qf):
             return {"kind": "region", "region": r}
 
-    # 4) objet locatif non résolu ? (majuscule = nom propre, ou lieu connu, ou
-    #    préposition fortement géographique) -> lieu inconnu, on refuse.
+    # nom propre, lieu connu ou préposition de lieu non résolus : lieu inconnu
     for m in _LOC.finditer(question):
         prep = _fold(m.group("prep"))
         obj_raw = m.group("obj").strip()
@@ -156,7 +129,7 @@ def scope(question: str) -> dict:
         if is_place and len(head) >= 3:
             return {"kind": "unknown", "place": obj_raw}
 
-    # 5) sinon : national / générique -> voie normale
+    # sinon : niveau national
     return {"kind": "national"}
 
 

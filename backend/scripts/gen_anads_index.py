@@ -1,10 +1,7 @@
-"""
-Génère `data/documents/anads_catalogue_index.md` à partir de
-`data/anads_catalogue.json` : les 285 fiches ANADS avec lien direct,
-regroupées par collection, pour indexation par le RAG (décision #79).
+"""Génère data/documents/anads_catalogue_index.md (les fiches ANADS par collection)
+à partir de data/anads_catalogue.json.
 
-À relancer après chaque `harvest_anads.py` :
-    cd backend && python scripts/gen_anads_index.py
+Usage : python scripts/gen_anads_index.py   (après harvest_anads.py)
 """
 from __future__ import annotations
 import json

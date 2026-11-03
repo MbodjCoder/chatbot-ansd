@@ -1,19 +1,8 @@
-"""
-Évaluation chiffrée et reproductible de RAMA sur un jeu de test « gold »
-(`data/eval/gold.jsonl`), défini INDÉPENDAMMENT du système à partir de faits
-officiels et du comportement attendu. Mesure :
+"""Évaluation de bout en bout sur le jeu de référence data/eval/gold.jsonl :
+voie attendue, faits et liens présents, refus hors périmètre, fidélité.
 
-- exactitude fonctionnelle (route attendue, faits présents, liens présents) ;
-- sécurité (refus des questions hors périmètre / injections) ;
-- fidélité (verdict du rail factuel sur les voies RAG/HYBRID) ;
-- latence p50 / p95 / max.
-
-Déterministe en mode démo (aucun réseau). Les cas `needs_llm` (robustesse aux
-fautes de frappe, réécriture) dépendent d'un fournisseur rapide : ils sont
-exécutés mais comptés à part quand le LLM n'est pas actif.
-
-Usage : cd backend && python scripts/evaluate.py
-Sorties : rapport console + docs/EVALUATION.md + data/eval/report.json
+Usage   : cd backend && python scripts/evaluate.py
+Sorties : rapport console, docs/EVALUATION.md, data/eval/report.json
 """
 from __future__ import annotations
 import io
@@ -131,7 +120,7 @@ def main() -> int:
 
     # console
     print("=" * 64)
-    print("ÉVALUATION RAMA —", "LLM actif" if llm_actif else "mode déterministe (démo)")
+    print("ÉVALUATION DU CHATBOT ANSD —", "LLM actif" if llm_actif else "mode déterministe (démo)")
     print("=" * 64)
     for x in results:
         flag = "OK " if x["ok"] else "ECH"
@@ -162,7 +151,7 @@ def main() -> int:
 
 def _write_md(s: dict, results: list, llm_actif: bool) -> None:
     lignes = [
-        "# Évaluation de RAMA (protocole reproductible)",
+        "# Évaluation du Chatbot ANSD (protocole reproductible)",
         "",
         f"> Généré par `python scripts/evaluate.py` sur `data/eval/gold.jsonl` "
         f"({s['n_total']} cas). Jeu de test défini **indépendamment** du système "

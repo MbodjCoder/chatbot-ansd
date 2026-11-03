@@ -1,16 +1,7 @@
-"""
-Recherche dans le catalogue ANADS (300 fiches d'etudes recoltees via l'API
-publique NADA — scripts/harvest_anads.py, metadonnees officielles).
+"""Recherche dans le catalogue ANADS (285 fiches, récoltées par scripts/harvest_anads.py).
 
-Le chatbot devient capable de repondre a « quelles enquetes existent sur la
-sante ? », « y a-t-il des microdonnees sur l'agriculture ? », etc., en citant
-les fiches EXACTES du catalogue (titre, periode, producteur, lien direct).
-Grounding structurel : chaque element de la reponse provient verbatim du
-catalogue — meme garantie que la verbalisation SQL (decision #10).
-
-Les fichiers de microdonnees restent soumis a la demande d'acces sur la
-plateforme : la reponse oriente vers la fiche ou cette demande se fait,
-c'est le parcours officiel ANSD.
+Chaque réponse cite des fiches exactes (titre, période, producteur, lien).
+L'accès aux microdonnées se demande sur la fiche elle-même.
 """
 from __future__ import annotations
 import json
@@ -22,7 +13,7 @@ from app.core.config import settings
 
 _CAT_PATH = Path(settings.database_path).parent / "anads_catalogue.json"
 
-# vocabulaire theme -> termes de recherche etendus (synonymes du domaine)
+# thème -> termes de recherche associés
 _EXPANSIONS = {
     "sante": ["sante", "demographique et de sante", "eds", "paludisme",
               "vaccination", "mortalite", "vih", "tabagisme", "nutrition"],
@@ -46,10 +37,7 @@ _EXPANSIONS = {
                  "echanges"],
 }
 
-# Mots non discriminants : presents dans presque toutes les fiches (ex.
-# « senegal ») ou issus de la formulation de la demande (« donnees »,
-# « statistiques », « je veux »...). Les garder fausserait le score et ferait
-# remonter des etudes recentes hors sujet au lieu des etudes du theme demande.
+# mots présents partout ou propres à la formulation : ignorés au classement
 _STOP = {
     "senegal", "donnee", "donnees", "statistique", "statistiques", "chiffre",
     "chiffres", "data", "dataset", "microdonnee", "microdonnees", "information",
@@ -79,11 +67,7 @@ class CatalogueANADS:
                                     f"{e['producteur'] or ''}")
                 self.etudes.append(e)
         self.total = len(self.etudes)
-        # Index d'auto-liaison des TITRES : toute mention d'un titre d'étude
-        # dans une réponse (même rédigée par le LLM) devient un lien vers sa
-        # fiche. Un titre plus long est apparié en premier (évite qu'un titre
-        # court, sous-chaîne d'un autre, capture la mention). Le millésime que
-        # le modèle ajoute parfois (« (2015) ») est inclus dans le texte lié.
+        # titres des fiches, du plus long au plus court, pour les rendre cliquables
         _AN = r"(?:\s*\((?:19|20)\d{2}(?:\s*[-/–]\s*\d{2,4})?\))?"
         idx = []
         for e in self.etudes:
@@ -94,10 +78,8 @@ class CatalogueANADS:
         self._title_index = [(rx, url) for rx, url, _ in idx]
 
     def autolink_titles(self, text: str, max_links: int = 10) -> str:
-        """Transforme en liens markdown les mentions de titres d'études ANADS
-        présentes dans `text` (vers leur fiche officielle). Ne retouche pas les
-        zones déjà liées ; chaque fiche n'est liée qu'une fois ; sélection sans
-        chevauchement. Applicable à N'IMPORTE QUELLE réponse (RAG, HYBRID…)."""
+        """Rend cliquables les titres d'études cités (une fois chacun, sans
+        toucher aux liens existants)."""
         if not text or not self._title_index:
             return text
         deja = [m.span() for m in
@@ -114,7 +96,6 @@ class CatalogueANADS:
             if m and m.group(0).strip() and not inside(*m.span()):
                 cands.append((m.start(), m.end(), url))
                 vus.add(url)
-        # sélection gloutonne sans chevauchement, dans l'ordre du texte
         cands.sort(key=lambda c: (c[0], -(c[1] - c[0])))
         chosen, occ = [], []
         for s, e, u in cands:
@@ -131,7 +112,7 @@ class CatalogueANADS:
     def search(self, question: str, k: int = 4) -> list[dict]:
         q = _fold(question)
         terms = {t for t in re.findall(r"[a-z]{4,}", q) if t not in _STOP}
-        # expansion thematique (synonymes officiels du domaine)
+        # termes associés au thème
         for theme, syns in _EXPANSIONS.items():
             if theme in q:
                 terms.update(s for syn in syns for s in syn.split() if s not in _STOP)
@@ -142,7 +123,7 @@ class CatalogueANADS:
             if year and e["annee_debut"] and \
                     e["annee_debut"] <= year.group(0) <= (e["annee_fin"] or e["annee_debut"]):
                 s += 2.0
-            # priorite aux etudes couvrant le Senegal
+            # priorité aux études nationales
             if "senegal" in _fold(e["pays"] or ""):
                 s += 0.5
             if s >= 1.5:

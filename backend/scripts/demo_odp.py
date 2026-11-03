@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Démonstration de la fédération de sources (décision #94) — pour la soutenance.
+"""Démonstration de l'adaptateur Plateforme Open Data : série d'inflation lue en
+direct, avec repli sur la base locale si la plateforme ne répond pas.
 
-Construit une source composite [Plateforme Open Data → entrepôt curaté] et sert une
-question chiffrée. Affiche QUELLE source a répondu : l'ODP en direct si le réseau le
-permet, sinon l'entrepôt curaté en repli. Prouve, en direct, que « brancher le SI réel
-de l'ANSD = ajouter un adaptateur » — et que le service ne tombe jamais.
-
-    python scripts/demo_odp.py
+Usage : python scripts/demo_odp.py
 """
 import sys
 from pathlib import Path

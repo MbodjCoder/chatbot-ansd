@@ -1,16 +1,7 @@
-"""
-Journalisation des interactions et des retours utilisateurs (JSONL).
+"""Journal des interactions et des avis des usagers (une ligne JSON par événement).
 
-Justification (memoire, protocole d'evaluation) : l'evaluation de l'usabilite
-(SUS, Brooke 1996) et l'analyse des erreurs en conditions reelles exigent une
-trace persistante de chaque interaction : question, route choisie, confiance,
-latence, verdict des guardrails, et retour explicite de l'utilisateur
-(pouce haut/bas). Le format JSONL (une ligne JSON par evenement) est
-directement exploitable par pandas pour l'analyse quantitative du memoire.
-
-Confidentialite (Principe 6, Nations Unies 2014) : aucune donnee personnelle
-n'est collectee ; seuls la question, les metadonnees techniques et un
-identifiant de session anonyme sont enregistres.
+Aucune donnée personnelle : la question, des informations techniques et un
+identifiant de session anonyme.
 """
 from __future__ import annotations
 import json
@@ -61,10 +52,7 @@ def _read(filename: str) -> list[dict]:
 
 
 def metrics() -> dict:
-    """Agregation de la telemetrie pour le pilotage du service et
-    l'evaluation quantitative du memoire (P2-7). Un service se pilote par la
-    mesure : volume, repartition des voies, latence, taux de refus, satisfaction.
-    Aucune donnee personnelle (Principe 6)."""
+    """Indicateurs d'usage : volume, voies, latence, refus, satisfaction."""
     inter = _read("interactions.jsonl")
     fb = _read("feedback.jsonl")
     n = len(inter)
@@ -87,7 +75,7 @@ def metrics() -> dict:
         return round(latences[min(len(latences) - 1, int(p * len(latences)))], 1) \
             if latences else 0.0
 
-    # latence médiane par voie (observabilité : repérer une voie qui dérive)
+    # latence médiane par voie
     lat_par_voie: dict[str, list] = {}
     for r in inter:
         if isinstance(r.get("latency_ms"), (int, float)):
