@@ -1,16 +1,8 @@
-"""
-Port « source statistique » et ses adaptateurs (architecture hexagonale).
+"""Sources de chiffres interrogeables, derrière un contrat commun.
 
-Justification (mémoire §4.2, décision #94) : l'écosystème d'information de l'ANSD est
-*fédéré* — Plateforme Open Data (API JSON/CSV), répertoire des localités, portails
-sectoriels, archive ANADS, et des chiffres « phares » publiés d'abord dans des rapports.
-La voie numérique ne doit donc pas être couplée à un stockage figé : elle dépend d'un
-**contrat** (port) `SourceStatistique`, dont l'entrepôt curaté (SQLite, ETL rejouable) est
-la première réalisation. Brancher une source réelle de l'ANSD = ajouter un adaptateur
-derrière le même contrat, sans toucher au reste de l'architecture.
-
-Chaque adaptateur renvoie une valeur ET sa provenance : la garantie P1 (ancrage numérique
-vérifiable) est ainsi préservée quel que soit le stockage sous-jacent.
+La voie chiffrée ne connaît que `SourceStatistique`. Brancher une source de
+l'ANSD (Plateforme Open Data, base interne) revient à ajouter un adaptateur,
+sans toucher au reste du code. Chaque résultat porte sa provenance.
 """
 from __future__ import annotations
 
@@ -23,25 +15,21 @@ from app.core.config import settings
 
 @dataclass
 class Resultat:
-    """Résultat d'une interrogation : colonnes, lignes, et provenance citable."""
+    """Colonnes, lignes et provenance."""
     columns: list = field(default_factory=list)
     rows: list = field(default_factory=list)
     provenance: str = ""
 
 
 class SourceIncapable(Exception):
-    """Levée par un adaptateur qui ne sait pas servir cette requête — le
-    consommateur (source composite) passe alors à la source suivante."""
+    """Levée quand un adaptateur ne sait pas servir la requête."""
 
 
 @runtime_checkable
 class SourceStatistique(Protocol):
-    """Contrat d'une source de chiffres officiels interrogeable.
-
-    Le consommateur (la voie Text-to-SQL) ne connaît que ce contrat, jamais le
-    stockage réel derrière. `execute` reçoit une requête SQL SELECT (déjà validée
-    en amont) ; un adaptateur qui ne parle pas SQL (API distante) reconnaît les
-    formes qu'il sait servir et lève `SourceIncapable` pour le reste."""
+    """Contrat : `execute` reçoit une requête SELECT déjà validée. Un adaptateur
+    qui ne parle pas SQL sert les formes qu'il connaît et lève `SourceIncapable`
+    pour le reste."""
 
     def execute(self, sql: str) -> Resultat: ...
 
@@ -49,12 +37,7 @@ class SourceStatistique(Protocol):
 
 
 class DataMartCurate:
-    """Adaptateur EN PLACE : entrepôt statistique curaté (SQLite, lecture seule).
-
-    Les chiffres publiés par l'ANSD sont extraits une fois par un ETL rejouable
-    (`seed_db.py`, assertions sur les totaux officiels) et structurés en tables.
-    Déterministe, hors-ligne, chaque valeur sourcée : le socle sûr de la voie
-    numérique (P1)."""
+    """Base statistique locale (SQLite, lecture seule), construite par scripts/seed_db.py."""
 
     def __init__(self, db_path: str | None = None):
         self.db_path = db_path or settings.database_path
@@ -74,10 +57,8 @@ class DataMartCurate:
 
 
 class SourceComposite:
-    """Fédération d'adaptateurs, essayés dans l'ordre. Le premier qui sait servir
-    la requête répond ; sinon on passe au suivant (dégradation gracieuse — même
-    principe que le client LLM). Permet de brancher une source distante (ODP) en
-    tête tout en gardant l'entrepôt curaté comme repli toujours disponible."""
+    """Adaptateurs essayés dans l'ordre : par exemple la Plateforme Open Data,
+    puis la base locale en repli."""
 
     def __init__(self, sources: list[SourceStatistique]):
         if not sources:
@@ -92,10 +73,10 @@ class SourceComposite:
             except SourceIncapable as e:
                 derniere_erreur = e
                 continue
-            except Exception as e:  # panne réseau/API d'un adaptateur distant
+            except Exception as e:  # panne d'un adaptateur distant
                 derniere_erreur = e
                 continue
-        # aucune source n'a pu répondre : on relaie à la dernière (repli mart)
+        # aucune source n'a répondu : la dernière (base locale) fait foi
         raise derniere_erreur or SourceIncapable("aucune source disponible")
 
     def provenance(self) -> str:

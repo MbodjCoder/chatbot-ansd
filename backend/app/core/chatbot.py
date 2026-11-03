@@ -1,25 +1,8 @@
-"""
-Service principal : assemblage des quatre composants + sessions + ressources.
+"""Service principal du chatbot : traite une question de bout en bout.
 
-Flux d'une requete (diagramme de sequence, memoire chap. Conception) :
-  question -> [Contextualisation conversationnelle] -> [Guardrails entree]
-           -> [Cache LRU] -> [Orchestrateur f(q)] -> SQL | RAG | HYBRID
-           -> [Synthese (production) | concatenation (demo)]
-           -> [Guardrails sortie : fidelite] -> reponse + sources + liens ANSD
-
-Sessions conversationnelles : historique borne par session ; les questions de
-suivi elliptiques ("Et en 2023 ?") sont reformulees :
-  - demo       : concatenation deterministe avec le tour precedent ;
-  - production : reecriture par LLM (question rewriting, Vakulenko et al. 2021),
-                 avec repli deterministe en cas d'echec (meme interface).
-
-En mode production, la voie HYBRID fait l'objet d'une synthese finale par LLM
-(un texte unique et coherent) contrainte aux chiffres fournis ; le rail de
-fidelite numerique reste applique en aval (defense en profondeur).
-
-Chaque reponse comporte les liens vers les publications officielles ANSD
-pertinentes (base data/resources.json, URLs verifiees) : c'est l'objectif
-"acces a l'information et navigation" du memoire.
+question -> correction -> contexte de la conversation -> contrôle d'entrée
+         -> cache -> voie (CATALOG, NAV, GEO, SQL, RAG, HYBRID)
+         -> contrôle de fidélité des chiffres -> réponse, liens et suggestions
 """
 from __future__ import annotations
 import re
@@ -41,25 +24,18 @@ from app.sql.pipeline import TextToSQLPipeline
 
 BASE_DOCS = Path(settings.database_path).parent / "documents"
 
-SESSION_TTL_S = 3600          # duree de vie d'une session inactive
-SESSION_MAX_TURNS = 8         # historique borne (fenetre glissante)
-MAX_SESSIONS = 500            # protection memoire
+SESSION_TTL_S = 3600          # durée de vie d'une session inactive (s)
+SESSION_MAX_TURNS = 8         # tours conservés par session
+MAX_SESSIONS = 500            # plafond mémoire
 
-# Indices d'une question de suivi elliptique (anaphore / ellipse).
-# Regle volontairement restrictive : un faux positif contextualiserait a tort
-# un message autonome (cause du bug historique "salut -> reponse precedente",
-# desormais aussi intercepte en amont par la couche small talk).
+# Indices d'une question de suivi (« Et en 2023 ? »). Règle volontairement
+# stricte : un message autonome ne doit pas être rattaché au tour précédent.
 _FOLLOWUP_PREFIXES = ("et ", "puis ", "ensuite", "quid")
 _FOLLOWUP_PRONOUNS = re.compile(
     r"\b(cette?|ces|celui|celle|la[- ]bas|meme(s)?)\b|"
     r"\b(ce chiffre|cet indicateur|cette annee[- ]la|y en a)\b", re.I)
 
-# Demande explicite de lien/document : "ou telecharger X", "donne le lien..."
-# Cette classe de questions est servie DIRECTEMENT par la base de liens
-# verifies (voie NAV) : la reponse est structurellement toujours juste,
-# la ou une extraction de phrases peut confondre deux "rapports".
-# Recherche dans le catalogue ANADS : "quelles enquetes sur la sante ?",
-# "y a-t-il des microdonnees sur l'agriculture ?", "cherche des donnees sur..."
+# Recherche dans le catalogue ANADS : « quelles enquêtes sur la santé ? »
 _CATALOG_INTENT = re.compile(
     r"(quelle?s?|liste|existe|y a[- ]t[- ]il|cherche|avez[- ]vous|dispose)"
     r".{0,40}\b(enquete|etude|microdonnee|jeu de donnee|dataset|donnee)s?\b"
@@ -67,12 +43,8 @@ _CATALOG_INTENT = re.compile(
     r"|dans le catalogue|catalogue anads|\banads\b.{0,30}\bsur\b",
     re.I)
 
-# Demande d'ACCES AUX DONNEES / DOCUMENTS (le coeur du service : faciliter
-# l'acces). "je veux les donnees sur la peche", "statistiques de la peche",
-# "chiffres sur le tourisme"... Ces formulations d'acquisition ne sont pas
-# interrogatives : elles doivent mener directement aux FICHES et LIENS
-# officiels (ANADS + Annuaire statistique + Open Data), jamais a une
-# extraction RAG qui repondrait "information non disponible".
+# Demande d'accès à des données (« je veux les données sur la pêche ») :
+# servie par les fiches ANADS et les portails officiels.
 _DATA_ACCESS_INTENT = re.compile(
     r"\b(donnee|statistique|chiffre|data|microdonnee)s?\b"
     r"\s+(sur|de|du|de la|des|d|concernant|relati\w*|a propos|pour|portant)\b"
@@ -82,17 +54,14 @@ _DATA_ACCESS_INTENT = re.compile(
     r".{0,25}\b(donnee|statistique|chiffre|data|microdonnee|dataset)s?\b",
     re.I)
 
-# Portails SPECIALISES par theme (partenaires officiels producteurs de la
-# donnee). Ajoutes aux liens quand le theme est detecte, en plus des portails
-# transversaux (SES, Annuaire, Open Data). URLs verifiees dans resources.json.
+# Portails spécialisés ajoutés aux liens selon le thème détecté
 _THEME_PORTAILS = [
     (re.compile(r"\b(agricol\w*|agriculture|elevage|betail|cultur\w*|horticol\w*|"
                 r"recolte|semence|rural|dapsa|arachide|cereal\w*|vivrier\w*)\b", re.I),
      ["dapsa", "ipar"]),
 ]
 
-# Mots-outils français fréquents : servent à décider qu'une question est « déjà
-# propre » (aucune faute probable) et qu'on peut SAUTER la normalisation LLM.
+# Mots courants : une question composée de mots connus n'a pas besoin de correction
 _MOTS_OUTILS = {
     "quel", "quelle", "quels", "quelles", "est", "sont", "etait", "etaient",
     "combien", "comment", "pourquoi", "quand", "que", "qui", "quoi", "dont",
@@ -107,6 +76,7 @@ _MOTS_OUTILS = {
     "svp", "merci", "bonjour", "salut", "peux", "peut", "veut", "faire",
 }
 
+# Demande explicite de lien ou de document (« où télécharger le RGPH-5 ? »)
 _NAV_INTENT = re.compile(
     r"\b(ou|où)\s+(trouver|telecharger|t[ée]l[ée]charger|consulter|acc[ée]der|"
     r"voir|obtenir|lire)\b"
@@ -116,28 +86,26 @@ _NAV_INTENT = re.compile(
     re.I)
 
 REWRITE_SYSTEM = """REWRITE_QUESTION - Tu reformules une question de suivi en une
-question autonome et complete, en francais, en t'appuyant sur l'historique de
-conversation fourni. Reponds UNIQUEMENT avec la question reformulee, sans
-commentaire. Conserve toutes les entites (annees, regions, indicateurs)."""
+question autonome et complète, en français, à partir de l'historique fourni.
+Réponds uniquement par la question reformulée. Conserve toutes les entités
+(années, régions, indicateurs)."""
 
-NORMALIZE_SYSTEM = """NORMALIZE_QUERY - Tu corriges une question posee a un assistant
-statistique de l'ANSD (Senegal). Corrige UNIQUEMENT les fautes de frappe,
-d'orthographe et de grammaire, et remets une ponctuation correcte. Regles :
-- garde EXACTEMENT le sens et l'intention de l'utilisateur ;
-- garde la langue d'origine (francais) ;
-- n'ajoute AUCUNE information, ne reponds pas, n'explique pas ;
-- conserve les entites (annees, regions, indicateurs, sigles comme RGPH, EHCVM) ;
-- si la question est deja correcte, renvoie-la telle quelle.
-Reponds UNIQUEMENT par la question corrigee, sans guillemets ni commentaire."""
+NORMALIZE_SYSTEM = """NORMALIZE_QUERY - Tu corriges une question posée à un assistant
+statistique sur le Sénégal. Corrige uniquement les fautes de frappe,
+d'orthographe et de grammaire, et la ponctuation. Règles :
+- garde exactement le sens et la langue (français) ;
+- n'ajoute aucune information, ne réponds pas, n'explique pas ;
+- conserve les entités (années, régions, indicateurs, sigles comme RGPH, EHCVM) ;
+- si la question est déjà correcte, renvoie-la telle quelle.
+Réponds uniquement par la question corrigée, sans guillemets."""
 
-SYNTHESIS_SYSTEM = """SYNTHESIS - Tu es RAMA, l'assistant statistique officiel de
-l'ANSD. On te fournit (1) un resultat chiffre issu de la base de donnees
-officielle et (2) un extrait documentaire methodologique. Redige UNE reponse
-unique, fluide et structuree en francais qui repond a la question :
-- commence par le chiffre demande (en **gras**) avec sa periode et sa source ;
-- enchaine avec l'explication methodologique utile ;
-- n'utilise AUCUN chiffre absent des elements fournis ;
-- neutre et precis (Principe 1 de la statistique officielle)."""
+SYNTHESIS_SYSTEM = """SYNTHESIS - Tu es l'assistant statistique du Chatbot ANSD.
+On te fournit (1) un résultat chiffré issu de la base de données et (2) un
+extrait documentaire. Rédige une réponse unique et fluide en français :
+- commence par le chiffre demandé (en **gras**) avec sa période et sa source ;
+- enchaîne avec l'explication utile ;
+- n'utilise aucun chiffre absent des éléments fournis ;
+- reste neutre et précis."""
 
 
 def _fold(text: str) -> str:
@@ -157,29 +125,26 @@ class ChatResponse:
     latency_ms: int = 0
     session_id: str = ""
     message_id: str = ""
-    data: dict | None = None   # resultat SQL structure (colonnes + lignes)
-    links: list = field(default_factory=list)  # publications ANSD pertinentes
-    suggestions: list = field(default_factory=list)  # questions de suivi proposees
+    data: dict | None = None                          # résultat SQL (colonnes, lignes)
+    links: list = field(default_factory=list)         # publications ANSD liées
+    suggestions: list = field(default_factory=list)   # questions de suivi
     cached: bool = False
 
 
 @dataclass
 class _Session:
-    history: list = field(default_factory=list)  # [(question, answer, route)]
+    history: list = field(default_factory=list)   # [(question, réponse, voie)]
     last_seen: float = field(default_factory=time.time)
     last_link_urls: frozenset = frozenset()
-    shown_suggestions: set = field(default_factory=set)  # cles deja proposees
+    shown_suggestions: set = field(default_factory=set)
 
 
 class ANSDChatbot:
     def __init__(self):
         self.llm = get_llm()
         self.is_mock = isinstance(self.llm, MockLLM)
-        # Adaptation latence/qualite au fournisseur (decisions #40 et #43) :
-        # sur une inference locale lente (Ollama/CPU), chaque appel LLM coute
-        # 30 a 90 s — les variantes deterministes (substitution d'entites,
-        # extraction ancree) prennent le relais ; sur une API distante rapide
-        # (Groq, DeepSeek...), le LLM assure reecriture, redaction et synthese.
+        # Modèle local lent (Ollama) : étapes déterministes. API rapide :
+        # le modèle de langage corrige, reformule et rédige.
         fast_provider = settings.llm_provider != "ollama"
         self.use_llm_aux = (not self.is_mock
                             and (settings.llm_aux == "llm"
@@ -191,44 +156,31 @@ class ANSDChatbot:
         self.gen_abstractive = use_llm_gen
         self.rag = RAGPipeline(gen_llm)
         n = self.rag.ingest_directory(BASE_DOCS)
-        # Voie SQL : gabarits d'abord (#39). Le repli LLM (DIN-SQL) pour la
-        # longue traine n'est active QUE sur un fournisseur rapide (gen_llm).
-        # CORRECTIF LATENCE : sur un LLM local lent (Ollama), une question sans
-        # gabarit (ex. "premier president du Senegal" = pas une statistique)
-        # declenchait un appel Ollama de 60-90 s pour finir sur "aucune donnee".
-        # En mode eclair, gen_llm = MockLLM (gabarits seuls) -> reponse immediate.
         self.sql = TextToSQLPipeline(gen_llm)
-        self.router = Orchestrator(gen_llm)      # fallback de routage rapide
+        self.router = Orchestrator(gen_llm)
         self.linker = ResourceLinker()
         self.catalogue = CatalogueANADS()
         self.docs_indexed = n
         self._lexique = self._construire_lexique()
         self._sessions: dict[str, _Session] = {}
         self._cache: dict[str, tuple[float, ChatResponse]] = {}
-        # Verrou d'etat partage (P0-1) : le serveur traite les requetes dans
-        # un pool de threads ; sessions et cache sont donc accedes en
-        # concurrence. RLock (reentrant) = exclusion mutuelle sans interblocage
-        # si une section verrouillee en appelle une autre. Granularite fine :
-        # on ne verrouille QUE les acces a l'etat, jamais le calcul de reponse,
-        # pour ne pas serialiser tout le trafic. Voir docs/EXPLICATIONS.md P0-1.
+        # Sessions et cache sont partagés entre threads : seul leur accès est
+        # verrouillé, jamais le calcul d'une réponse.
         self._lock = threading.RLock()
 
     # ------------------------------------------------------------ sessions
     def _session(self, session_id: str | None) -> tuple[str, _Session]:
         now = time.time()
         with self._lock:
-            # 1) purge des sessions expirees (TTL)
+            # purge des sessions expirées
             if len(self._sessions) > MAX_SESSIONS:
                 self._sessions = {k: s for k, s in self._sessions.items()
                                   if now - s.last_seen < SESSION_TTL_S}
-            # 2) cap DUR (protection DoS memoire) : si un client inonde d'ID
-            #    de session uniques dans le TTL, on evince les plus anciens
-            #    (LRU) pour borner strictement l'empreinte memoire
+            # plafond strict : éviction des sessions les plus anciennes
             while len(self._sessions) >= MAX_SESSIONS:
                 oldest = min(self._sessions, key=lambda k: self._sessions[k].last_seen)
                 del self._sessions[oldest]
-            # 3) validation de l'id fourni par le client (evite les cles
-            #    aberrantes : longueur/charset bornes)
+            # identifiant fourni par le client : format contrôlé
             if session_id and not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", session_id):
                 session_id = None
             sid = session_id or telemetry.new_id()
@@ -241,9 +193,7 @@ class ANSDChatbot:
 
     def _remember(self, sess: _Session, question: str, answer: str,
                   route: str) -> None:
-        """Mutation de l'historique de session sous verrou : deux requetes
-        concurrentes sur la MEME session (double-clic, flux + requete) ne
-        corrompent pas la liste."""
+        """Ajoute un tour à l'historique (sous verrou)."""
         with self._lock:
             sess.history.append((question, answer, route))
             if len(sess.history) > SESSION_MAX_TURNS:
@@ -252,8 +202,7 @@ class ANSDChatbot:
     @staticmethod
     def _is_followup(question: str) -> bool:
         q = question.lower().strip()
-        # signaux explicites : connecteur de suite, anaphore, ou message tres
-        # court porteur d'une entite de restriction (annee, trimestre)
+        # connecteur de suite, pronom de rappel, ou message court avec une année
         return (q.startswith(_FOLLOWUP_PREFIXES)
                 or bool(_FOLLOWUP_PRONOUNS.search(q))
                 or (len(q.split()) <= 4
@@ -264,8 +213,7 @@ class ANSDChatbot:
                          for q, a, _ in sess.history[-turns:])
 
     def _construire_lexique(self) -> set:
-        """Vocabulaire du domaine (corpus + régions + mots-outils) pour juger
-        qu'une question est déjà bien écrite → éviter un appel LLM inutile."""
+        """Vocabulaire du domaine (corpus, régions, mots courants)."""
         lex = set()
         for p in Path(BASE_DOCS).glob("*.md"):
             try:
@@ -280,8 +228,7 @@ class ANSDChatbot:
         return lex | _MOTS_OUTILS
 
     def _looks_clean(self, question: str) -> bool:
-        """Vrai si tous les mots « pleins » sont connus (corpus, domaine,
-        régions, mots-outils) → aucune faute probable, normalisation inutile."""
+        """Vrai si tous les mots de la question sont connus : rien à corriger."""
         toks = re.findall(r"[a-z]{4,}", _fold(question))
         for t in toks:
             if t in self._lexique:
@@ -292,15 +239,9 @@ class ANSDChatbot:
         return True
 
     def _normalize_query(self, question: str) -> str:
-        """Correction des fautes (frappe, orthographe, grammaire) par le LLM,
-        AVANT guardrail/routage : une question mal orthographiee ("kel é le to
-        de chaumage a dakr") est ainsi comprise comme "Quel est le taux de
-        chomage a Dakar ?". Active uniquement avec un fournisseur rapide
-        (use_llm_aux) ; repli silencieux sur la question d'origine.
-        Garde-fous : longueur plausible, pas de refus/meta injecte par le LLM.
-        OPTIMISATION LATENCE : si la question est deja bien ecrite (tous les
-        mots connus), on saute l'appel LLM -> reponse plus rapide et moins de
-        charge sur le fournisseur (le gros du trafic legitime est deja propre)."""
+        """Corrige les fautes (« kel é le to de chaumage a dakr ») par le modèle
+        de langage. Ignorée si la question est déjà propre ; en cas de doute,
+        la question d'origine est conservée."""
         if not self.use_llm_aux or len(question) > 300:
             return question
         if self._looks_clean(question):
@@ -309,7 +250,7 @@ class ANSDChatbot:
             resp = self.llm.complete(NORMALIZE_SYSTEM, question,
                                      temperature=0.0, max_tokens=120)
             corrige = resp.text.strip().strip('"').strip()
-            # garde-fous : longueur du meme ordre, non vide, pas une phrase meta
+            # rejet des sorties de longueur aberrante ou des commentaires
             if (corrige and 0.5 * len(question) <= len(corrige) <= 2.5 * len(question) + 20
                     and not re.match(r"(je |desole|il semble|voici|la question)", corrige.lower())):
                 return corrige
@@ -319,12 +260,8 @@ class ANSDChatbot:
 
     def _followups(self, question: str, answer: str, sql: str | None,
                    docs: list[str], sess: _Session, k: int = 3) -> list[str]:
-        """Suggestions de suivi EVOLUTIVES et non redondantes.
-        1. Sur fournisseur rapide : generation LLM ancree dans la reponse
-           reelle (pertinence maximale, renouvelee a chaque tour).
-        2. Complement / repli : gabarits deterministes par sujet.
-        Dedoublonnage a l'echelle de la SESSION (`shown_suggestions`) : une
-        meme suggestion n'est jamais reaffichee, ni une question deja posee."""
+        """Questions de suivi : générées par le modèle de langage, complétées par
+        des gabarits ; jamais deux fois la même dans une session."""
         avoid = {followups._fold(q)[:60] for q, _, _ in sess.history}
         avoid |= {followups._fold(question)[:60]} | set(sess.shown_suggestions)
         out: list[str] = []
@@ -346,15 +283,13 @@ class ANSDChatbot:
                     break
         out = out[:k]
         sess.shown_suggestions |= {followups._fold(s)[:60] for s in out}
-        # bornage memoire de la trace des suggestions montrees
         if len(sess.shown_suggestions) > 60:
             sess.shown_suggestions = set(list(sess.shown_suggestions)[-40:])
         return out
 
     @staticmethod
     def _sujet_phrase(question: str) -> str:
-        """Extrait « sur la pêche » d'une demande d'accès, pour une réponse
-        naturelle. Repli neutre si rien d'exploitable."""
+        """Extrait « sur la pêche » d'une demande d'accès à des données."""
         m = (re.search(r"\bsur\s+(.{3,55})$", question.strip(), re.I)
              or re.search(r"\b(?:concernant|portant sur|à propos d[e']|de la|du|des|de l')\s+(.{3,55})$",
                           question.strip(), re.I))
@@ -366,17 +301,14 @@ class ANSDChatbot:
 
     @staticmethod
     def _theme_portail_ids(question: str) -> list[str]:
-        """Ids de portails spécialisés selon le thème détecté (ex. agriculture
-        -> DAPSA, IPAR)."""
+        """Portails spécialisés du thème (agriculture : DAPSA, IPAR)."""
         for rx, ids in _THEME_PORTAILS:
             if rx.search(question):
                 return ids
         return []
 
     def _acces_donnees_links(self, question: str, etudes: list[dict]) -> list[dict]:
-        """Cartes de liens : fiches ANADS pertinentes + portails spécialisés du
-        thème (DAPSA, IPAR…) + portails transversaux (SES, Bases = Annuaire +
-        Open Data, ANADS, Publications). Uniquement des URLs vérifiées."""
+        """Liens : fiches ANADS, portails du thème, puis portails généraux."""
         out, seen = [], set()
         for e in etudes[:4]:
             if e["url"] in seen:
@@ -395,9 +327,7 @@ class ANSDChatbot:
         return out[:8]
 
     def _acces_donnees_answer(self, question: str, etudes: list[dict]) -> str:
-        """Réponse d'accès aux données : fiches ANADS cliquables (grounding
-        structurel) + portails Annuaire/Open Data/Publications, toujours liés.
-        Jamais « information non disponible »."""
+        """Réponse à une demande de données : fiches ANADS et portails officiels."""
         R = self.linker.resources
         bases = R.get("ansd_bases")
         anads = R.get("anads")
@@ -429,7 +359,6 @@ class ANSDChatbot:
         if bases:
             portails.append(f"l’**[Annuaire statistique du Sénégal]({bases['url']})**")
             portails.append(f"la **[plateforme Open Data du Sénégal (ODP)]({bases['url']})**")
-        # portails spécialisés du thème (producteurs de la donnée)
         for rid in self._theme_portail_ids(question):
             r = R.get(rid)
             if r:
@@ -446,10 +375,8 @@ class ANSDChatbot:
 
     def _geo_intercept(self, question: str, sid: str, sess: "_Session",
                        message_id: str, t0: float) -> "ChatResponse | None":
-        """Garde géographique (P1, « incontestable ») : on ne substitue JAMAIS
-        un chiffre d'une autre entité à celle demandée. N'intervient que pour
-        une ZONE naturelle (agrégat) ou un LIEU non résoluble ; sinon None
-        (le pipeline normal traite région/national)."""
+        """Zone naturelle (Casamance…) ou lieu inconnu : jamais le chiffre d'une
+        autre entité. Renvoie None pour une région ou le niveau national."""
         from app.sql.pipeline import _fr
         sc = geo.scope(question)
         if sc["kind"] not in ("zone", "unknown"):
@@ -467,7 +394,7 @@ class ANSDChatbot:
             self._log(question, question, resp)
             return resp
 
-        # -- lieu non résoluble : réponse honnête, sans chiffre substitué -----
+        # lieu inconnu : réponse honnête, sans chiffre
         if sc["kind"] == "unknown":
             place = sc["place"]
             answer = (
@@ -481,7 +408,7 @@ class ANSDChatbot:
                     "Quelle est la population de Dakar en 2023 ?"]
             return _fin(answer, links, sugg, "geo-inconnu")
 
-        # -- zone naturelle : agrégation VALIDE (population, superficie) -------
+        # zone naturelle : seules population et superficie s'additionnent
         zone_nom = sc["zone"].replace("-", " ").title()
         membres = sc["regions"]
         noms = [geo.display(r) for r in membres]
@@ -526,8 +453,7 @@ class ANSDChatbot:
                         for n in noms[:2]]
                 return _fin(answer, links, sugg, "geo-zone", data)
 
-        # -- zone + taux (pauvreté, densité, Gini) : NON agrégeable -----------
-        # additionner des taux serait faux : on l'explique et on oriente.
+        # un taux ne s'additionne pas entre régions : on l'explique
         answer = (
             f"La **{zone_nom}** est une zone naturelle regroupant les régions de "
             f"{liste} ; ce n’est pas une région administrative, et cet indicateur "
@@ -538,20 +464,16 @@ class ANSDChatbot:
         return _fin(answer, links, sugg, "geo-zone-taux")
 
     def _contextualize(self, question: str, sess: _Session) -> str:
-        """Reformulation d'une question de suivi.
-        1. Substitution d'entites (annee, region) : si le suivi apporte une
-           nouvelle valeur d'une entite presente dans la question precedente,
-           on substitue -> reformulation EXACTE, routage identique a
-           l'original (slot filling, technique standard du QA conversationnel).
-        2. Sinon, reecriture LLM (si activee) avec repli concatenation."""
+        """Rend une question de suivi autonome : substitution de l'année ou de la
+        région dans la question précédente, sinon reformulation par le modèle."""
         if not sess.history:
             return question
         last_q = sess.history[-1][0]
-        # -- substitution d'annee : "Et en 2023 ?" --------------------------
+        # « Et en 2023 ? »
         ny = re.search(r"\b(19|20)\d{2}\b", question)
         if ny and re.search(r"\b(19|20)\d{2}\b", last_q):
             return re.sub(r"\b(19|20)\d{2}\b", ny.group(0), last_q, count=1)
-        # -- substitution de region : "Et a Thies ?" ------------------------
+        # « Et à Thiès ? »
         from app.sql.templates import REGIONS
         def find_region(text: str) -> str | None:
             t = text.lower()
@@ -561,14 +483,13 @@ class ANSDChatbot:
             return next((r for r in REGIONS if r in t), None)
         nr, lr = find_region(question), find_region(last_q)
         if nr and lr and nr != lr:
-            # motif tolerant aux accents ("Thiès"/"Thies") et aux traits d'union
+            # motif tolérant aux accents et aux traits d'union
             pattern = re.sub(r"[eaio]", lambda m: {"e": "[eéèê]", "a": "[aà]",
                              "i": "[iî]", "o": "[oô]"}[m.group(0)],
                              lr.replace("-", "[- ]"))
             substituted = re.sub(pattern, nr, last_q, flags=re.I)
             if substituted != last_q:
                 return substituted
-        # -- reecriture LLM (fournisseur rapide) ----------------------------
         if self.use_llm_aux:
             try:
                 resp = self.llm.complete(
@@ -580,7 +501,7 @@ class ANSDChatbot:
                 if 3 <= len(rewritten.split()) <= 60:
                     return rewritten
             except Exception:
-                pass  # repli deterministe ci-dessous
+                pass
         return f"{question} (dans le contexte de la question precedente : {last_q})"
 
     # ------------------------------------------------------------ cache
@@ -606,21 +527,15 @@ class ANSDChatbot:
     # ------------------------------------------------------------ requete
     def ask(self, question: str, session_id: str | None = None,
             on_delta=None) -> ChatResponse:
-        """Traite une question et renvoie la reponse complete tracee.
+        """Traite une question et renvoie la réponse complète.
 
-        `on_delta` (P0-2) : callback optionnel appele avec chaque fragment de
-        texte des que le LLM le produit, sur la voie documentaire abstractive
-        (fournisseur rapide). Permet un vrai streaming des tokens tout en
-        conservant un unique chemin de code (pas de duplication). Sur les voies
-        deterministes (instantanees), il n'est pas sollicite."""
+        `on_delta` reçoit chaque fragment de texte au fil de la rédaction
+        (voie documentaire uniquement)."""
         t0 = time.perf_counter()
         sid, sess = self._session(session_id)
         message_id = telemetry.new_id()
 
-        # -1. Actes sociaux ("salut", "merci", "qui es-tu ?"...) : reponse
-        # directe, ni contextualisation ni routage — corrige le defaut ou une
-        # salutation re-declenchait la reponse precedente. Variante choisie
-        # selon l'avancement de la conversation (pas d'effet perroquet).
+        # Échanges courants (« salut », « merci ») : réponse directe
         cat = smalltalk.detect(question)
         if cat:
             sugg = (followups.SUGGESTIONS["accueil"][:3]
@@ -632,21 +547,19 @@ class ANSDChatbot:
                 session_id=sid, message_id=message_id, suggestions=sugg)
             self._log(question, question, resp)
             return resp
-        # salutation en tete d'une vraie question -> on la retire
+        # salutation en tête d'une vraie question : retirée
         question = smalltalk.strip_greeting(question)
 
-        # 0a. Normalisation : correction des fautes de frappe/orthographe/
-        # grammaire par le LLM (fournisseur rapide uniquement). Rend le systeme
-        # robuste aux questions mal ecrites, en amont de tout le pipeline.
+        # 1. Correction des fautes
         question = self._normalize_query(question)
 
-        # 0. Contextualisation conversationnelle (suivi elliptique)
+        # 2. Question de suivi rendue autonome
         effective_q = question
         followup = self._is_followup(question) and bool(sess.history)
         if followup:
             effective_q = self._contextualize(question, sess)
 
-        # 1. Rails d'entree (sur la question contextualisee)
+        # 3. Contrôle d'entrée
         verdict = check_input(effective_q)
         if not verdict.allowed:
             resp = ChatResponse(answer=verdict.message, guardrail=verdict.reason,
@@ -655,7 +568,7 @@ class ANSDChatbot:
             self._log(question, effective_q, resp)
             return resp
 
-        # 1bis. Cache (questions autonomes uniquement : jamais les suivis)
+        # 4. Cache (questions autonomes uniquement)
         cache_key = _fold(effective_q)
         if not followup:
             hit = self._cache_get(cache_key)
@@ -668,18 +581,10 @@ class ANSDChatbot:
                 self._log(question, effective_q, resp)
                 return resp
 
-        # Les intentions se detectent sur le texte plie (sans accents) :
-        # "enquête" et "enquete" doivent matcher identiquement.
+        # intentions détectées sur le texte sans accents
         q_fold = _fold(effective_q)
 
-        # 1ter-a. Voie ACCES AUX DONNEES / CATALOGUE. Le service existe d'abord
-        # pour FACILITER L'ACCES : toute demande de donnees/documents sur un
-        # theme (« je veux les donnees sur la peche », « statistiques du
-        # tourisme »...) est resolue en LIENS OFFICIELS DIRECTS — les fiches
-        # ANADS correspondantes (avec leur URL verifiee), plus l'Annuaire
-        # statistique et la plateforme Open Data (ODP) pour les series
-        # agregees. Jamais « information non disponible ». Grounding structurel
-        # (chaque element provient du catalogue verifie, meme garantie que #10).
+        # 5. Demande de données : fiches ANADS et portails officiels
         if _CATALOG_INTENT.search(q_fold) or _DATA_ACCESS_INTENT.search(q_fold):
             etudes = self.catalogue.search(effective_q, k=5)
             answer = self._acces_donnees_answer(effective_q, etudes)
@@ -696,9 +601,7 @@ class ANSDChatbot:
             self._log(question, effective_q, resp)
             return resp
 
-        # 1ter. Voie NAVIGATION : demande explicite de lien ou de document.
-        # Reponse composee directement depuis la base de liens verifies —
-        # jamais d'extraction hasardeuse pour cette classe de questions.
+        # 6. Demande de lien ou de document : registre de liens vérifiés
         if _NAV_INTENT.search(q_fold):
             nav_links = self.linker.links_for(effective_q, [], relax=True)
             if nav_links:
@@ -724,21 +627,16 @@ class ANSDChatbot:
                 self._log(question, effective_q, resp)
                 return resp
 
-        # 1quater. Garde GÉOGRAPHIQUE (P1, « incontestable ») : une question sur
-        # une ZONE naturelle (Casamance…) est agrégée correctement ; un LIEU non
-        # résoluble reçoit une réponse honnête — JAMAIS un chiffre national (ou
-        # d'une autre entité) substitué à celle demandée. Placée avant le routage
-        # -> couvre à la fois la voie SQL et la voie RAG.
+        # 7. Zone naturelle ou lieu inconnu
         geo_resp = self._geo_intercept(effective_q, sid, sess, message_id, t0)
         if geo_resp is not None:
             if not followup:
                 self._cache_put(cache_key, geo_resp)
             return geo_resp
 
-        # 2. Routage
+        # 8. Choix de la voie : SQL, RAG ou HYBRID
         decision = self.router.route(effective_q)
 
-        # 3. Execution de la voie choisie
         parts, sources, evidence, sql_used, data = [], [], "", None, None
         history = self._history_text(sess) if sess.history else ""
         if decision.route in ("SQL", "HYBRID"):
@@ -751,21 +649,17 @@ class ANSDChatbot:
             if r.rows and r.columns:
                 data = {"columns": r.columns, "rows": [list(row) for row in r.rows[:50]]}
         if decision.route in ("RAG", "HYBRID"):
-            # streaming reel (P0-2) : uniquement la voie documentaire
-            # abstractive (fournisseur rapide), jamais un chiffre non valide.
-            # En HYBRID, la synthese finale re-emet le texte complet -> on ne
-            # streame les tokens que sur le RAG pur.
+            # flux de texte en direct sur la voie documentaire seule
             stream_cb = (on_delta if (on_delta and self.gen_abstractive
                                       and decision.route == "RAG") else None)
             r = self.rag.answer(effective_q, history=history, on_delta=stream_cb)
             parts.append(r.answer)
-            # preuve pour le rail factuel = passages effectivement utilises,
-            # renvoyes par answer() -> plus de second retrieval (P1-3)
+            # preuve du contrôle de fidélité : passages utilisés
             for c in r.chunks:
                 evidence += " " + c.text
             sources += [{"type": "document", **s} for s in r.sources]
 
-        # 3bis. Synthese finale (production, voie HYBRID) : un texte unique
+        # voie HYBRID : synthèse en un seul texte
         if decision.route == "HYBRID" and self.use_llm_aux and len(parts) == 2:
             try:
                 synth = self.llm.complete(
@@ -777,46 +671,32 @@ class ANSDChatbot:
                 if synth.text.strip():
                     parts = [synth.text.strip()]
             except Exception:
-                pass  # repli : concatenation
+                pass
         answer = "\n\n".join(p for p in parts if p)
 
-        # 4. Rail de sortie (fidelite numerique)
+        # 9. Contrôle de fidélité : chaque nombre doit figurer dans la preuve
         fv = check_output_faithfulness(answer, evidence)
         if not fv.allowed:
             answer, guard = fv.message, fv.reason
         else:
             guard = "ok"
 
-        # 5. Liens vers les publications officielles ANSD (navigation).
-        # Si la reponse documentaire est un echec ("Information non
-        # disponible..."), le document retenu n'etait PAS pertinent : on
-        # n'en derive aucun lien (correctif du lien hors sujet constate).
-        # L'appariement thematique de la QUESTION reste possible.
+        # 10. Liens sources (aucun lien tiré d'un document jugé non pertinent)
         echec_rag = answer.strip().startswith("Information non disponible")
         doc_sources = ([] if echec_rag else
                        [s["document"] for s in sources if s.get("type") == "document"])
         links = self.linker.links_for(effective_q, doc_sources, sql=sql_used)
-        # Promesse P2 : TOUTE reponse factuelle porte au moins un lien source,
-        # quel qu'en soit le type. Si aucun lien specifique n'a ete derive
-        # (indicateur transversal, rail de fidelite declenche, theme non
-        # apparie), on rattache une source officielle verifiee de secours.
-        # On n'efface plus les liens quand ils repetent le tour precedent : la
-        # source doit rester visible a chaque reponse.
+        # toute réponse factuelle porte au moins un lien source
         if not links and decision.route in ("SQL", "RAG", "HYBRID"):
             links = [self.linker.fallback(
                 "ansd_indicateurs" if data else "ansd_publications")]
         sess.last_link_urls = frozenset(l["url"] for l in links)
 
-        # 5ter. Liens INLINE (#78) : les mentions de ressources officielles
-        # dans le texte deviennent cliquables (sur une reponse valide). On lie
-        # AUSSI les titres d'etudes ANADS cites par le LLM (#86) -> chaque
-        # etude nommee pointe vers sa fiche, dans n'importe quelle reponse.
+        # mentions de publications et d'études rendues cliquables
         if guard == "ok":
             answer = self.linker.autolink(answer)
             answer = self.catalogue.autolink_titles(answer)
 
-        # 5bis. Suggestions de suivi EVOLUTIVES, ancrees dans la reponse et
-        # jamais redondantes (dedoublonnage a l'echelle de la session)
         sugg = self._followups(effective_q, answer, sql_used, doc_sources, sess) \
             if guard == "ok" else []
 
@@ -830,10 +710,7 @@ class ANSDChatbot:
             suggestions=sugg,
         )
 
-        # 6. Historique + cache + journalisation
-        # on memorise la question CONTEXTUALISEE : un suivi de suivi
-        # ("Et a Thies ?" puis "Et a Ziguinchor ?") se resout alors par
-        # substitution sur une question complete, jamais sur une ellipse
+        # 11. Historique (question complète, pour les suivis suivants), cache, journal
         self._remember(sess, effective_q, answer, decision.route)
         if not followup:
             self._cache_put(cache_key, resp)

@@ -1,18 +1,8 @@
-"""
-Pipeline RAG (Retrieval-Augmented Generation).
+"""Voie documentaire : recherche des passages pertinents, puis réponse ancrée.
 
-Fondement : Lewis et al. (2020). Le pipeline suit les 4 etapes canoniques
-documentees dans le memoire (sect. 4.2.2) :
-  1. Segmentation : 512 tokens, chevauchement 128 (Gao et al., 2023)
-  2. Vectorisation : BGE-M3 (Chen et al./BAAI, 2024) - dense + sparse
-  3. Indexation : Qdrant / HNSW (Malkov & Yashunin, 2018)
-  4. Generation ancree ("grounded generation", Asai et al., 2023)
-
-Deux implementations du retriever derriere une interface unique :
-  - BGEQdrantRetriever (production) : embeddings denses BGE-M3 + Qdrant
-  - TfidfRetriever (demo)           : TF-IDF + similarite cosinus (Salton, 1975)
-La substitution demo/production ne change ni l'API ni le protocole
-d'evaluation : seule la qualite du retrieval varie (mesuree par RAGAS).
+1. Découpage des documents par section, puis par fenêtres de 512 mots.
+2. Recherche : index TF-IDF (TfidfRetriever), ou BGE-M3 et Qdrant si installés.
+3. Rédaction à partir des seuls passages retenus.
 """
 from __future__ import annotations
 import re
@@ -24,13 +14,8 @@ from app.core.config import settings
 from app.llm.client import LLMClient
 
 
-# ---------------------------------------------------------------- chunking
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
-    """Segmentation par fenetre glissante sur les mots (proxy des tokens).
-
-    Gao et al. (2023) : des chunks trop grands diluent la pertinence,
-    trop petits perdent le contexte. 512/128 est la configuration validee.
-    """
+    """Fenêtre glissante sur les mots."""
     words = text.split()
     if not words:
         return []
@@ -39,16 +24,9 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
 
 
 def chunk_document(text: str, chunk_size: int, overlap: int) -> list[str]:
-    """Chunking SEMANTIQUE : segmentation d'abord par SECTION (titres markdown
-    ## / #), puis fenetre glissante DANS chaque section si elle est trop longue.
-
-    Justification : un chunk doit etre topiquement coherent. Decouper une FAQ
-    ou un document multi-themes par simple fenetre de mots melange des sujets
-    dans un meme chunk -> l'extraction pioche des phrases hors sujet (defaut
-    constate : "contacter l'ANSD" renvoyait la phrase sur le Directeur general).
-    Aligner les frontieres de chunks sur les frontieres de sections resout ce
-    probleme a la racine (chunking structurel, Gao et al. 2023)."""
-    # decoupe sur les titres de niveau 1-3 en debut de ligne
+    """Découpe par section (titres markdown), puis par fenêtre si la section est
+    longue : chaque passage reste sur un seul sujet."""
+    # titres de niveau 1 à 3
     parts = re.split(r"\n(?=#{1,3}\s)", text)
     chunks: list[str] = []
     for part in parts:
@@ -69,7 +47,6 @@ class RetrievedChunk:
     score: float
 
 
-# ---------------------------------------------------------------- retrievers
 class Retriever(ABC):
     @abstractmethod
     def index(self, docs: dict[str, str]) -> None: ...
@@ -78,19 +55,12 @@ class Retriever(ABC):
 
 
 class TfidfRetriever(Retriever):
-    """Baseline lexicale (mode demo) - modele vectoriel de Salton et al. (1975).
-    Sert aussi de BASELINE dans le protocole d'evaluation (comparaison
-    retrieval lexical vs dense, cf. Karpukhin et al., 2020)."""
+    """Recherche lexicale TF-IDF, similarité cosinus."""
 
     def __init__(self):
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.pipeline import FeatureUnion
-        # Deux vues complementaires (meme principe que le routeur) :
-        #  - mots (1-2 grammes) : capte le sens lexical ;
-        #  - caracteres (3-5 grammes) : robustesse aux variantes morphologiques,
-        #    fautes et questions courtes ou l'overlap de mots est faible
-        #    (defaut constate : "ou se trouve l'ANSD" ne retrouvait pas
-        #    l'adresse). strip_accents : usagers avec accents, corpus sans.
+        # mots (sens) et fragments de mots (fautes, variantes), sans accents
         self._vec = FeatureUnion([
             ("mots", TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True,
                                      strip_accents="unicode")),
@@ -119,12 +89,7 @@ class TfidfRetriever(Retriever):
 
 
 class BGEQdrantRetriever(Retriever):
-    """Retriever de production : BGE-M3 (dense) + Qdrant (HNSW).
-
-    BGE-M3 : support de 100+ langues dont le francais, representation
-    dense + sparse (Chen et al., 2024). Qdrant : HNSW (Malkov & Yashunin,
-    2018), filtrage hybride vecteur + metadonnees.
-    """
+    """Recherche sémantique : plongements BGE-M3 et index Qdrant (optionnel)."""
 
     def __init__(self):
         from qdrant_client import QdrantClient
@@ -143,8 +108,7 @@ class BGEQdrantRetriever(Retriever):
             for chunk in chunk_document(text, settings.chunk_size, settings.chunk_overlap)
         ]
         vectors = self._model.encode([c for c, _ in chunks])["dense_vecs"]
-        # P2-9 : recreate_collection est deprecie dans qdrant-client recent.
-        # On supprime puis cree explicitement (API a jour, idempotente).
+        # collection recréée à chaque indexation
         if self._client.collection_exists(self._collection):
             self._client.delete_collection(self._collection)
         self._client.create_collection(
@@ -160,29 +124,25 @@ class BGEQdrantRetriever(Retriever):
 
     def search(self, query: str, k: int) -> list[RetrievedChunk]:
         qv = self._model.encode([query])["dense_vecs"][0]
-        # P2-9 : query_points remplace search() deprecie
         res = self._client.query_points(self._collection, query=qv.tolist(),
                                         limit=k)
         return [RetrievedChunk(h.payload["text"], h.payload["source"], h.score)
                 for h in res.points]
 
 
-# ---------------------------------------------------------------- pipeline
-GROUNDED_SYSTEM = """GROUNDED_ANSWER - Tu es RAMA, l'assistant statistique officiel de \
-l'ANSD (Agence Nationale de la Statistique et de la Demographie du Senegal). \
-Tu es expert en statistique publique et tu t'exprimes dans un francais precis, \
-pedagogique et neutre (Principe 1 de la statistique officielle : impartialite).
+GROUNDED_SYSTEM = """GROUNDED_ANSWER - Tu es l'assistant statistique du Chatbot ANSD \
+(données de l'Agence nationale de la Statistique et de la Démographie du Sénégal). \
+Tu t'exprimes dans un français précis, pédagogique et neutre.
 
-Regles imperatives (guardrails factuels) :
-1. Reponds UNIQUEMENT a partir du <contexte>. N'invente jamais un chiffre.
-2. Si l'information est absente du contexte, reponds exactement :
+Règles :
+1. Réponds uniquement à partir du <contexte>. N'invente jamais un chiffre.
+2. Si l'information est absente du contexte, réponds exactement :
    "Information non disponible dans les sources ANSD."
-3. Nomme l'operation statistique d'origine de chaque affirmation
-   (ex. : "selon le RGPH-5 2023...", "d'apres l'EHCVM II 2021/2022...").
-4. Structure : reponse directe d'abord, precisions ensuite ; utilise **gras**
-   pour les chiffres cles et des listes a puces si plusieurs elements.
-5. Si un <historique> est fourni, assure la coherence conversationnelle
-   (resous les references aux tours precedents) sans le re-citer.
+3. Nomme l'opération statistique d'origine de chaque affirmation
+   (ex. : "selon le RGPH-5 2023...", "d'après l'EHCVM II 2021/2022...").
+4. Réponse directe d'abord, précisions ensuite ; **gras** pour les chiffres
+   clés, listes à puces si plusieurs éléments.
+5. Si un <historique> est fourni, tiens compte des tours précédents sans les répéter.
 6. Termine, quand c'est pertinent, par une phrase orientant vers la
    publication officielle a consulter."""
 
@@ -192,7 +152,7 @@ class RAGResult:
     answer: str
     sources: list[dict] = field(default_factory=list)
     grounded: bool = True
-    chunks: list = field(default_factory=list)  # passages retenus (preuve, P1-3)
+    chunks: list = field(default_factory=list)  # passages retenus (preuve)
 
 
 class RAGPipeline:
@@ -207,31 +167,20 @@ class RAGPipeline:
         return len(docs)
 
     def _prepare(self, question: str) -> tuple[str, list]:
-        """Recuperation + construction du prompt. Renvoie (prompt, chunks
-        retenus). Factorise pour eviter le DOUBLE retrieval (P1-3) : les
-        chunks retournes servent AUSSI de preuve au rail de fidelite, sans
-        relancer la recherche."""
+        """Recherche et construction de la consigne ; renvoie (consigne, passages)."""
         chunks = self.retriever.search(question, settings.top_k)
-        # Filtrage type CRAG (Yan et al., 2024) : ecarter les passages
-        # dont la pertinence est sous le seuil -> reduit le bruit injecte.
+        # passages sous le seuil de pertinence écartés
         kept = [c for c in chunks if c.score >= settings.rerank_threshold]
         if not kept:
             return "", []
-        # limitation du contexte de generation (Lost in the Middle, Liu et
-        # al. 2023) : les passages les mieux classes suffisent, les autres
-        # diluent l'attention et alourdissent l'inference locale
+        # seuls les meilleurs passages sont transmis
         kept = kept[:settings.gen_context_chunks]
         contexte = "\n\n".join(f"[Source: {c.source}]\n{c.text}" for c in kept)
         return contexte, kept
 
     def answer(self, question: str, history: str = "", on_delta=None) -> RAGResult:
-        """Genere la reponse documentaire ancree.
-
-        Si `on_delta` est fourni (P0-2, streaming reel), les fragments du LLM
-        sont transmis au fur et a mesure via ce callback ; le texte complet est
-        neanmoins assemble et renvoye pour que le rail de fidelite s'applique en
-        aval (streaming optimiste, validation a posteriori). Sans `on_delta`,
-        comportement bloquant classique."""
+        """Réponse documentaire. `on_delta` reçoit les fragments au fil de la
+        rédaction ; le texte complet est renvoyé pour le contrôle de fidélité."""
         contexte, kept = self._prepare(question)
         if not kept:
             return RAGResult("Information non disponible dans les sources ANSD.",

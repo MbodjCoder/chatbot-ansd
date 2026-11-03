@@ -1,18 +1,8 @@
-"""
-Recolte du contenu textuel des pages du site de l'ANSD (harvest_web.py).
+"""Récupère le texte de pages du site ansd.sn, sans menus ni pieds de page,
+pour le corpus documentaire.
 
-Objectif : elargir la base de connaissance documentaire (RAG) avec le contenu
-REEL des pages du site, au-dela des documents redigés a la main. Chaque page
-est nettoyee de son habillage (menu, pied de page repetes sur toutes les pages)
-pour ne conserver que le corps utile, puis sauvegardee comme document de corpus.
-
-Traçabilite : chaque document conserve son URL source en tete. Les pages sont
-verifiees (HTTP 200) avant ingestion.
-
-Usage : python scripts/harvest_web.py
-Sortie : data/documents/web_*.md (ingeres au demarrage comme les autres docs)
-
-NB : utilise `curl` (le reseau via urllib est instable sur la machine cible).
+Sortie : data/documents/web_*.md
+Usage  : python scripts/harvest_web.py
 """
 import html
 import re

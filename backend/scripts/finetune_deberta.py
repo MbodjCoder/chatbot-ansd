@@ -1,15 +1,6 @@
-"""
-Fine-tuning de DeBERTa-v3 (He et al., 2021) pour le routage (production).
-
-Justification : DeBERTa-v3 domine les encodeurs de taille comparable sur
-GLUE/SuperGLUE grace a l'attention desenchevetree (disentangled attention)
-et a l'objectif RTD (ELECTRA-style). Un encodeur leger (86M parametres)
-suffit pour une classification a 3 classes et garantit une latence de
-routage de l'ordre de la milliseconde sur CPU, contre plusieurs centaines
-de ms pour un appel LLM.
+"""Affinage optionnel de DeBERTa-v3 pour le choix de la voie (transformers, GPU conseillé).
 
 Usage : python scripts/finetune_deberta.py --epochs 5 --out models/router-deberta
-Prerequis : pip install transformers datasets accelerate sentencepiece
 """
 import argparse
 from pathlib import Path

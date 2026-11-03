@@ -1,17 +1,13 @@
-"""API REST FastAPI (documentee OpenAPI /docs) - exigence methodologique
-de contrats d'interface explicites entre modules.
+"""API du Chatbot ANSD (documentation interactive : /docs).
 
-Endpoints :
-  POST /api/chat        : question -> reponse + tracabilite complete
-  POST /api/chat/stream : meme contrat, reponse en flux SSE (affichage
-                          progressif : evenements meta / delta / done)
-  POST /api/transcribe  : dictée vocale -> texte (repli serveur Whisper, #98)
-  POST /api/feedback    : retour utilisateur (pouce haut/bas) -> journal JSONL
-                          (necessaire au protocole d'evaluation SUS du memoire)
-  GET  /api/health      : etat du systeme
-Protection : limitation de debit en memoire (fenetre glissante par IP),
-suffisante pour un deploiement mono-instance ; en production multi-instances,
-la substituer par une passerelle (nginx / API gateway).
+  POST /api/chat         question -> réponse complète et tracée
+  POST /api/chat/stream  même réponse, envoyée au fil de l'eau (SSE)
+  POST /api/transcribe   dictée vocale -> texte (navigateurs sans reconnaissance)
+  POST /api/feedback     avis de l'usager sur une réponse
+  GET  /api/health       état du service
+  GET  /api/metrics      indicateurs d'usage
+
+Débit limité par adresse IP (en mémoire, une seule instance).
 """
 import asyncio
 import json
@@ -35,25 +31,21 @@ from app.core.config import settings
 from app.llm import transcription
 
 app = FastAPI(
-    title="RAMA-ANSD",
-    description="Systeme d'Acces Guide aux Statistiques - chatbot hybride "
-                "RAG + Text-to-SQL pour l'ANSD (memoire de master).",
+    title="Chatbot ANSD",
+    description="Assistant d'accès aux statistiques du Sénégal : "
+                "recherche documentaire et requêtes sur une base de données.",
     version="2.0.0",
 )
-# CORS configurable (S6) : "*" en dev ; en production, lister le domaine ANSD
-# via ANSD_CORS_ORIGINS="https://www.ansd.sn,https://ansd.sn".
+# Origines autorisées : ANSD_CORS_ORIGINS="https://www.ansd.sn,https://ansd.sn"
 _origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=_origins or ["*"],
                    allow_methods=["GET", "POST"], allow_headers=["*"])
 
 
-# Gestionnaire d'exception global (S4) : aucune requete ne renvoie de trace
-# interne ni de 500 brut. L'usager recoit un message neutre, l'incident est
-# journalise cote serveur. Defense en profondeur (les voies ont deja leurs
-# replis, ceci est le dernier filet).
+# Dernier filet : l'usager reçoit un message neutre, le détail reste au serveur
 @app.exception_handler(Exception)
 async def _on_error(request: Request, exc: Exception):
-    print(f"[RAMA] erreur non geree sur {request.url.path} : "
+    print(f"[chatbot] erreur non gérée sur {request.url.path} : "
           f"{type(exc).__name__}: {exc}")
     return JSONResponse(
         status_code=500,
@@ -65,9 +57,9 @@ async def _on_error(request: Request, exc: Exception):
 _PAGE_404 = (
     "<!doctype html><html lang=fr><head><meta charset=utf-8>"
     "<meta name=viewport content='width=device-width,initial-scale=1'>"
-    "<link rel=icon type=image/svg+xml href=/rama.svg>"
-    "<title>Page introuvable — RAMA</title>"
-    "<style>body{font-family:'Inter',Segoe UI,sans-serif;background:#f4f8fc;"
+    "<link rel=icon type=image/svg+xml href=/logo.svg>"
+    "<title>Page introuvable — Chatbot ANSD</title>"
+    "<style>body{font-family:system-ui,Segoe UI,sans-serif;background:#fff;"
     "color:#0a2440;display:flex;min-height:100vh;align-items:center;"
     "justify-content:center;text-align:center;margin:0}"
     "@media(prefers-color-scheme:dark){body{background:#08121f;color:#e6f0fb}}"
@@ -75,14 +67,14 @@ _PAGE_404 = (
     "p{color:#3f5972}a{display:inline-block;margin-top:18px;background:#0e79c4;"
     "color:#fff;padding:10px 18px;border-radius:11px;text-decoration:none;"
     "font-weight:600}</style></head><body><div class=b><h1>404</h1>"
-    "<p>Cette page n'existe pas. Revenez poser votre question à RAMA.</p>"
-    "<a href=/>← Retour à RAMA</a></div></body></html>"
+    "<p>Cette page n'existe pas.</p>"
+    "<a href=/>← Retour au chatbot</a></div></body></html>"
 )
 
 
 @app.exception_handler(StarletteHTTPException)
 async def _on_http(request: Request, exc: StarletteHTTPException):
-    # 404 sur une page -> page HTML soignée ; sur l'API -> JSON neutre.
+    # page inconnue : page HTML ; API : réponse JSON
     if exc.status_code == 404 and not request.url.path.startswith("/api"):
         return HTMLResponse(_PAGE_404, status_code=404)
     return JSONResponse(status_code=exc.status_code,
@@ -90,32 +82,27 @@ async def _on_http(request: Request, exc: StarletteHTTPException):
 
 bot = ANSDChatbot()
 
-# Etat du LLM affiche au demarrage : l'operateur sait immediatement si le
-# modele reel est actif ou si le systeme est en repli demonstration.
+# état du modèle de langage affiché au démarrage
 if bot.is_mock:
     if settings.mode == "production":
-        print("[RAMA] ATTENTION : mode production demande mais aucune cle API "
-              "trouvee -> repli demonstration hors-ligne.\n"
-              "[RAMA] Collez votre cle DeepSeek dans backend/.env "
-              "(ANSD_LLM_API_KEY=sk-...) puis redemarrez.")
+        print("[chatbot] Mode production sans clé API : repli sur le mode démonstration. "
+              "Renseignez ANSD_LLM_API_KEY dans backend/.env puis redémarrez.")
     else:
-        print("[RAMA] Mode demonstration hors-ligne (deterministe).")
+        print("[chatbot] Mode démonstration hors ligne (déterministe).")
 else:
-    print(f"[RAMA] LLM reel actif : {settings.llm_provider} / {bot.llm.model}")
+    print(f"[chatbot] Modèle actif : {settings.llm_provider} / {bot.llm.model}")
 
-# ------------------------------------------------------------ rate limiting
-# Fenetre glissante par IP. Protege chat ET feedback (P2-8). Le compteur est
-# un etat partage entre threads -> verrou (P0-1). OWASP API Security.
+# ------------------------------------------------------------ limitation de débit
+# Fenêtre glissante par IP ; compteur partagé entre threads, donc verrouillé.
 RATE_WINDOW_S = 60
 RATE_MAX_REQ = 30
-RATE_MAX_IPS = 10_000            # borne DoS memoire du dictionnaire (S2)
+RATE_MAX_IPS = 10_000            # plafond mémoire
 _hits: dict[str, deque] = defaultdict(deque)
 _hits_lock = threading.Lock()
 
 
 def _client_ip(request: Request) -> str:
-    # Derriere un proxy de confiance (nginx), l'IP reelle est dans
-    # X-Forwarded-For ; sinon on ne s'y fie PAS (usurpation possible). S6.
+    # X-Forwarded-For n'est lu que derrière un proxy de confiance
     if settings.trust_proxy:
         xff = request.headers.get("x-forwarded-for")
         if xff:
@@ -137,8 +124,7 @@ def _rate_limit(request: Request, max_req: int = RATE_MAX_REQ,
             raise HTTPException(status_code=429,
                                 detail="Trop de requetes : reessayez dans une minute.")
         dq.append(now)
-        # purge des IP inactives : empeche la croissance non bornee du
-        # dictionnaire (fuite memoire / DoS) sous un grand nombre d'IP
+        # purge des IP inactives
         if len(_hits) > RATE_MAX_IPS:
             for k in [k for k, d in _hits.items()
                       if not d or now - d[-1] > RATE_WINDOW_S]:
@@ -164,31 +150,22 @@ class Feedback(BaseModel):
 @app.post("/api/chat", summary="Poser une question au chatbot")
 def chat(q: Question, request: Request):
     _rate_limit(request)
-    # bot.ask est robuste (FallbackLLM) ; ce filet garantit qu'aucune erreur
-    # inattendue ne renvoie de 500/trace a l'usager (S4).
     try:
         return bot.ask(q.question, q.session_id).__dict__
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001
-        print(f"[RAMA] erreur /api/chat : {type(e).__name__}: {e}")
+        print(f"[chatbot] erreur /api/chat : {type(e).__name__}: {e}")
         return {"answer": "Le service a rencontré une difficulté temporaire. "
                 "Veuillez réessayer.", "route": "-", "guardrail": "error"}
 
 
-@app.post("/api/chat/stream", summary="Poser une question (reponse en flux SSE)")
+@app.post("/api/chat/stream", summary="Poser une question (réponse en flux)")
 async def chat_stream(q: Question, request: Request):
-    """Reponse en flux SSE avec VRAI streaming des tokens (P0-2).
+    """Réponse en flux SSE.
 
-    Le calcul tourne dans un thread ; un pont thread->async (asyncio.Queue)
-    transmet chaque fragment du LLM des qu'il est produit, sur la voie
-    documentaire abstractive (fournisseur rapide). Les voies deterministes
-    (SQL, NAV, CATALOG, cache) n'emettent pas de fragment : seul l'evenement
-    final `done` porte la reponse, deja validee.
-      event delta -> fragment de texte en temps reel (streaming optimiste)
-      event done  -> charge utile complete et validee (source de verite)
-    Le rail de fidelite s'applique au texte assemble ; si le `done.answer`
-    differe des fragments streames, le client remplace le texte (repli).
+      event delta : fragment de texte, au fil de la rédaction (voie documentaire)
+      event done  : réponse complète et validée, qui fait foi
     """
     _rate_limit(request)
     loop = asyncio.get_running_loop()
@@ -201,7 +178,7 @@ async def chat_stream(q: Question, request: Request):
         try:
             r = bot.ask(q.question, q.session_id, on_delta=on_delta)
             loop.call_soon_threadsafe(queue.put_nowait, ("done", r.__dict__))
-        except Exception as e:  # noqa: BLE001 -> jamais de 500 silencieux
+        except Exception as e:  # noqa: BLE001
             loop.call_soon_threadsafe(queue.put_nowait, ("error", str(e)))
 
     async def gen():
@@ -213,12 +190,12 @@ async def chat_stream(q: Question, request: Request):
                        + json.dumps(val, ensure_ascii=False) + "\n\n")
             elif kind == "error":
                 yield ("event: done\ndata: "
-                       + json.dumps({"answer": "Le service a rencontre une "
-                                     "erreur. Veuillez reessayer.", "route": "-",
+                       + json.dumps({"answer": "Le service a rencontré une "
+                                     "erreur. Veuillez réessayer.", "route": "-",
                                      "guardrail": "error"}, ensure_ascii=False)
                        + "\n\n")
                 break
-            else:  # done
+            else:
                 yield f"event: done\ndata: {json.dumps(val, ensure_ascii=False)}\n\n"
                 break
 
@@ -227,21 +204,20 @@ async def chat_stream(q: Question, request: Request):
                                       "X-Accel-Buffering": "no"})
 
 
-@app.post("/api/feedback", summary="Evaluer une reponse (pouce haut/bas)")
+@app.post("/api/feedback", summary="Évaluer une réponse")
 def feedback(f: Feedback, request: Request):
-    _rate_limit(request)   # P2-8 : meme protection anti-spam que /api/chat
+    _rate_limit(request)
     telemetry.log_feedback(f.model_dump())
     return {"status": "merci"}
 
 
-RATE_MAX_VOIX = 40   # transcriptions/min/IP (partielles comprises, ~3 s d'écart)
+RATE_MAX_VOIX = 40   # transcriptions par minute et par IP (partielles comprises)
 
 
 @app.post("/api/transcribe", summary="Transcrire une dictée vocale (repli serveur)")
 async def transcribe(request: Request):
-    """Corps = audio brut (webm/opus, mp4…), Content-Type = son type MIME.
-    Utilisé seulement quand le navigateur n'a pas de reconnaissance vocale
-    intégrée (#98). Réponse : {"texte": "..."}."""
+    """Corps : audio brut (webm/opus, mp4…), Content-Type : son type MIME.
+    Réponse : {"texte": "..."}."""
     _rate_limit(request, max_req=RATE_MAX_VOIX, canal="voix")
     if not transcription.disponible():
         raise HTTPException(status_code=503, detail="Saisie vocale indisponible.")
@@ -264,27 +240,22 @@ async def transcribe(request: Request):
     return {"texte": texte}
 
 
-@app.get("/api/metrics", summary="Metriques d'usage agregees (observabilite)")
+@app.get("/api/metrics", summary="Indicateurs d'usage")
 def metrics():
-    """Indicateurs de pilotage (P2-7) : volume, repartition des voies,
-    latence (mediane/p90/p99), taux de refus des guardrails, satisfaction.
-    Alimente l'evaluation quantitative du memoire."""
+    """Volume, répartition des voies, latence, taux de refus, satisfaction."""
     return telemetry.metrics()
 
 
 @app.get("/api/popular", summary="Questions les plus recherchees, par categorie")
 def popular():
-    """Initiative mixte (Horvitz 1999) : par categorie thematique, les questions
-    reellement les plus posees, classees sur la telemetrie du service (hors
-    salutations et refus). Alimente les categories cliquables de l'accueil."""
+    """Questions les plus posées, par thème (journal d'usage)."""
     from app.core import popular as _popular
     return _popular.compute()
 
 
-@app.get("/api/health", summary="Etat du systeme")
+@app.get("/api/health", summary="État du service")
 def health():
-    # S7 : on expose un BOOLEEN de sante du LLM, pas le detail de l'erreur
-    # interne (pas de fuite d'information : URL, pile, etc. restent au serveur).
+    # état du modèle exposé en booléen : aucun détail interne
     return {"status": "ok", "mode": settings.mode,
             "llm": bot.llm.__class__.__name__,
             "llm_actif": not bot.is_mock,
@@ -299,12 +270,8 @@ if frontend.exists():
     app.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")
 
 
-# Performance de chargement (#96) : l'interface doit s'ouvrir vite sur tout
-# appareil, y compris en 3G. Deux leviers sans dépendance :
-#  - cache navigateur : HTML revalidé à chaque visite (ETag -> 304, jamais de
-#    version périmée), ressources statiques (images, icônes) gardées 7 jours ;
-#  - compression gzip (~4x sur le HTML), sauf le flux SSE qui doit partir
-#    fragment par fragment (une compression tamponnerait l'affichage progressif).
+# Chargement rapide : HTML revalidé à chaque visite, images gardées 7 jours,
+# compression gzip (sauf le flux SSE, envoyé fragment par fragment).
 _CACHE_LONG = (".jpg", ".png", ".svg", ".webp", ".ico", ".webmanifest")
 
 
@@ -321,8 +288,7 @@ async def _cache_statique(request: Request, call_next):
 
 
 class _GzipSaufFlux:
-    """GZip pour les réponses textuelles, sauf le flux SSE et les images
-    (formats déjà compressés : les recompresser coûte du CPU pour rien)."""
+    """GZip sauf pour le flux SSE et les images (déjà compressées)."""
 
     def __init__(self, application):
         self.brut = application

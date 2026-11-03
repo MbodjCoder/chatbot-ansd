@@ -18,7 +18,7 @@ jobs:
       - name: Installer les dépendances
         run: pip install -r backend/requirements.txt
 
-      - name: Construire la base + le routeur (hors ligne)
+      - name: Construire la base et le classifieur
         working-directory: backend
         env:
           ANSD_MODE: demo
@@ -26,23 +26,19 @@ jobs:
           python scripts/seed_db.py
           python scripts/train_router.py
 
-      - name: Tests système (mode démo, déterministe)
+      - name: Tests (mode démo, déterministe)
         working-directory: backend
         env:
           ANSD_MODE: demo
-        run: python -m pytest tests/test_system.py -q
+        run: python -m pytest -q
 
-      - name: Intégration client LLM (faux serveur OpenAI local)
+      - name: Évaluation (requêtes SQL et jeu de référence)
         working-directory: backend
         env:
           ANSD_MODE: demo
-        run: python tests/test_llm_integration.py
-
-      - name: Évaluation qualité (garde-barrière exactitude + sécurité)
-        working-directory: backend
-        env:
-          ANSD_MODE: demo
-        run: python scripts/evaluate.py
+        run: |
+          python -m app.evaluation.evaluate_sql
+          python scripts/evaluate.py
 
   build-image:
     runs-on: ubuntu-latest
@@ -50,4 +46,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Vérifier que l'image Docker se construit
-        run: docker build -f backend/Dockerfile -t rama:ci .
+        run: docker build -t chatbot-ansd:ci .

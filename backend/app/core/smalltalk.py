@@ -1,22 +1,7 @@
-"""
-Couche conversationnelle sociale (small talk).
+"""Échanges courants : salutations, remerciements, « qui es-tu ? ».
 
-Probleme corrige : sans cette couche, un message social ("salut", "merci")
-etait traite comme une question de suivi elliptique, contextualise avec le
-tour precedent, et re-declenchait la reponse precedente — defaut d'usage
-majeur pour un chatbot grand public.
-
-Approche : detection deterministe par lexique normalise (sans accents),
-AVANT la contextualisation et les guardrails. Les actes de dialogue sociaux
-(salutation, remerciement, cloture, presentation de soi, demande d'aide)
-sont une categorie standard des systemes de dialogue (dialog acts,
-Stolcke et al., 2000) et se traitent sans acces aux donnees.
-
-Deux cas :
-  - message PUREMENT social  -> reponse sociale directe (variantes pour
-    eviter l'effet robotique), sans routage ni historique ;
-  - salutation SUIVIE d'une question ("Bonjour, quelle est la population ?")
-    -> la salutation est retiree et la question est traitee normalement.
+- message purement social : réponse directe, sans recherche ;
+- salutation suivie d'une question : la salutation est retirée.
 """
 from __future__ import annotations
 import re
@@ -26,11 +11,11 @@ import unicodedata
 def _fold(text: str) -> str:
     t = "".join(c for c in unicodedata.normalize("NFD", text.lower())
                 if unicodedata.category(c) != "Mn")
-    t = re.sub(r"[!?.,;:…\-'’]+", " ", t)   # ponctuation, traits d'union, apostrophes
+    t = re.sub(r"[!?.,;:…\-'’]+", " ", t)
     return re.sub(r"\s+", " ", t).strip()
 
 
-# lexique des actes sociaux (formes normalisees, sans accents)
+# formes normalisées, sans accents
 _GREET = {"salut", "bonjour", "bonsoir", "hello", "hi", "coucou", "slt",
           "cc", "yo", "bjr", "salam", "salamalekoum", "assalamou alaikoum",
           "nanga def", "hey"}
@@ -53,7 +38,7 @@ _HELP = {"aide", "help", "aide moi", "que peux tu faire", "tu peux faire quoi",
 
 _RESPONSES: dict[str, list[str]] = {
     "greet": [
-        "Bonjour 👋 Je suis RAMA, l'assistant statistique de l'ANSD. "
+        "Bonjour 👋 Je suis le Chatbot ANSD. "
         "Posez-moi votre question sur les statistiques du Sénégal — "
         "population, emploi, prix, pauvreté, croissance…",
         "Bonjour ! Ravi de vous accueillir. Que souhaitez-vous savoir sur "
@@ -80,12 +65,11 @@ _RESPONSES: dict[str, list[str]] = {
         "statistiques du Sénégal.",
     ],
     "who": [
-        "Je suis **RAMA**, l'assistant virtuel de l'ANSD — "
-        "l'Agence Nationale de la Statistique "
-        "et de la Démographie du Sénégal. Je réponds à vos questions à partir "
-        "des données et publications officielles (recensement RGPH-5, enquêtes "
-        "EHCVM et ENES, indice des prix, comptes nationaux) et je vous oriente "
-        "vers les bons documents du site ansd.sn.",
+        "Je suis le **Chatbot ANSD**, un assistant qui répond à vos questions "
+        "sur les statistiques du Sénégal à partir des données et publications "
+        "de l'Agence nationale de la Statistique et de la Démographie "
+        "(recensement RGPH-5, enquêtes EHCVM et ENES, indice des prix, comptes "
+        "nationaux), et vous oriente vers les bons documents du site ansd.sn.",
     ],
     "help": [
         "Je peux :\n"
@@ -105,14 +89,14 @@ _CATEGORIES = [("who", _WHO), ("help", _HELP), ("howru", _HOWRU),
 
 
 def detect(question: str) -> str | None:
-    """Retourne la categorie d'acte social si le message est PUREMENT social."""
+    """Catégorie de l'échange si le message est purement social, sinon None."""
     q = _fold(question)
     if not q or len(q.split()) > 6:
         return None
     for cat, lexicon in _CATEGORIES:
         if q in lexicon:
             return cat
-    # salutation composee ("bonjour sage", "salut ca va", "hello bonjour")
+    # salutation composée (« salut ça va »)
     words = q.split()
     if words[0] in _GREET and len(words) <= 4:
         rest = " ".join(words[1:])
@@ -123,8 +107,7 @@ def detect(question: str) -> str | None:
 
 
 def strip_greeting(question: str) -> str:
-    """Retire une salutation en tete d'une vraie question.
-    "Bonjour, quelle est la population ?" -> "quelle est la population ?" """
+    """« Bonjour, quelle est la population ? » -> « quelle est la population ? »"""
     m = re.match(r"^\s*(salut|bonjour|bonsoir|hello|hi|coucou|slt|bjr|hey)\b[\s,!.:]*",
                  question, re.I)
     if m and len(question[m.end():].split()) >= 3:

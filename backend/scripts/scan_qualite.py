@@ -1,12 +1,7 @@
-"""
-Scan de qualite systematique : batterie de questions couvrant toutes les
-voies (SQL, RAG, HYBRID, NAV, CATALOG, CHAT, suivis, guardrails), avec
-detection AUTOMATIQUE des defauts de reponse :
-  - phrase dupliquee dans la reponse ;
-  - echo de la question ;
-  - reponse vide ou tronquee ;
-  - jargon technique restant (nom =, SELECT, chunk...) ;
-  - refus injustifie (guardrail sur une question du domaine).
+"""Contrôle qualité automatique : une série de questions couvrant toutes les voies,
+avec détection des défauts (phrase répétée, écho de la question, réponse vide,
+jargon technique, refus injustifié).
+
 Usage : ANSD_MODE=demo python scripts/scan_qualite.py
 """
 import io

@@ -1,12 +1,7 @@
-"""
-Test de charge de l'API RAMA : envoie N requêtes avec une concurrence C et
-mesure débit, latences (p50/p95/p99) et robustesse (200 servies, 429 limitées,
-5xx = erreurs qui NE DOIVENT PAS exister). Cible les voies déterministes
-(SQL/CATALOG, sans appel LLM) pour mesurer le serveur lui-même, pas le
-fournisseur distant.
+"""Test de charge de l'API : débit, latences (p50, p95, p99) et absence d'erreur 5xx.
+Vise les voies sans appel au modèle, pour mesurer le serveur lui-même.
 
-Usage :
-    python scripts/loadtest.py --url http://127.0.0.1:8000 --n 120 --concurrency 40
+Usage : python scripts/loadtest.py --url http://127.0.0.1:8000 --n 120 --concurrency 40
 """
 from __future__ import annotations
 import argparse

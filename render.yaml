@@ -1,7 +1,6 @@
-# Blueprint Render — déploiement en 1 clic (New → Blueprint → ce dépôt → Apply).
-# Docker (Dockerfile racine), région Frankfurt (proche Sénégal), plan gratuit.
-# La clé Groq n'est PAS ici : sync:false -> Render la demande à l'application
-# du blueprint (saisie manuelle, stockée chiffrée).
+# Déploiement Render (New > Blueprint > ce dépôt). Dockerfile racine, Francfort.
+# La clé du modèle n'est pas ici : Render la demande à la création (sync: false).
+# Le nom du service fixe l'adresse en ligne : ne pas le modifier.
 services:
   - type: web
     name: rama

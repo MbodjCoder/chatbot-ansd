@@ -1,14 +1,8 @@
-"""
-Entrainement du classifieur de routage (niveau 1) en mode demo.
+"""Entraîne le classifieur de choix de voie (TF-IDF et régression logistique)
+sur data/datasets/routing_dataset.csv, avec validation croisée à 5 plis.
 
-Modele : TF-IDF (mots 1-2 grammes + caracteres 3-5 grammes) + regression
-logistique. Sert de BASELINE reproductible ; en production, le meme corpus
-sert au fine-tuning de DeBERTa-v3 (scripts/finetune_deberta.py).
-
-Protocole : validation croisee stratifiee 5 plis (le corpus etant petit,
-un simple split train/test serait a forte variance), puis re-entrainement
-sur l'ensemble du corpus pour l'artefact de production demo.
-Metriques : accuracy, F1 macro, matrice de confusion.
+Sortie : data/router_demo.joblib
+Usage  : python scripts/train_router.py
 """
 import sys
 from pathlib import Path

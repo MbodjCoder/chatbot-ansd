@@ -1,17 +1,7 @@
-"""
-Recolte et extraction de texte des PDF officiels de l'ANSD (harvest_pdf.py).
+"""Télécharge des notes PDF de l'ANSD et en extrait le texte pour le corpus documentaire.
 
-Objectif : integrer le contenu des rapports et notes PDF a la base de
-connaissance documentaire. On privilegie les documents en PROSE (notes de
-presse, syntheses) plutot que les gros rapports tabulaires : l'extraction de
-tableaux produit un texte bruite peu exploitable par le RAG.
-
-Chaque PDF est telecharge (curl), son texte extrait (pypdf), nettoye, tronque
-aux premieres pages utiles, et sauvegarde comme document de corpus avec sa
-source. URLs verifiees (HTTP 200).
-
-Usage : python scripts/harvest_pdf.py
 Sortie : data/documents/pdf_*.md
+Usage  : python scripts/harvest_pdf.py
 """
 import re
 import subprocess

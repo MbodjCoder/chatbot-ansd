@@ -3,29 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
-<meta name="description" content="Rama : posez vos questions sur les statistiques du Sénégal — chiffres, comparaisons et documents, d'après les données publiques de l'ANSD.">
-<title>Rama — Statistiques du Sénégal</title>
+<meta name="description" content="Chatbot ANSD : posez vos questions sur les statistiques du Sénégal — chiffres, comparaisons et documents, d'après les données publiques de l'ANSD.">
+<title>Chatbot ANSD — Statistiques du Sénégal</title>
 <meta name="theme-color" content="#0e79c4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#08121f" media="(prefers-color-scheme: dark)">
-<link rel="icon" type="image/svg+xml" href="/rama.svg">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="RAMA">
+<meta name="apple-mobile-web-app-title" content="Chatbot ANSD">
 <meta name="mobile-web-app-capable" content="yes">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Rama — Statistiques du Sénégal">
+<meta property="og:title" content="Chatbot ANSD — Statistiques du Sénégal">
 <meta property="og:description" content="Les statistiques du Sénégal, en une question. Réponses fondées sur les données publiques de l'ANSD, sources à l'appui.">
 <meta property="og:image" content="/icon-512.png">
 <meta property="og:locale" content="fr_FR">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Rama — Statistiques du Sénégal">
+<meta name="twitter:title" content="Chatbot ANSD — Statistiques du Sénégal">
 <meta name="twitter:description" content="Les statistiques du Sénégal, en une question. Réponses sourcées.">
 
 <style>
   /* ============ Jetons de thème (clair par défaut) ============ */
-  /* Palette ANSD : bleu sombre (marine) · bleu océan · blanc */
+  /* bleu marine, bleu océan, blanc */
   :root{
     --papier:#ffffff; --carte:#ffffff; --carte2:#eaf2fa;
     --encre:#0a2440; --encre2:#3f5972; --encre3:#70879e;
@@ -51,11 +51,8 @@
     color:#fff;padding:9px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
     text-decoration:none;transition:top .15s}
   .skip:focus{top:8px;outline:2px solid #fff;outline-offset:2px}
-  /* App-shell FIXE : la racine ne défile jamais, seul #chat défile.
-     Hauteur = --appvh (piloté en JS via visualViewport) = zone RÉELLEMENT
-     visible au-dessus du clavier. Ainsi, clavier ouvert, l'app se réduit et la
-     barre de saisie reste juste au-dessus du clavier (jamais masquée), sans
-     débordement ni zoom. Replis : 100dvh puis 100vh si dvh/JS absents. */
+  /* Seul #chat défile. La hauteur suit la zone visible au-dessus du clavier
+     (--appvh, posée en JS) : la saisie n'est jamais masquée. */
   html,body{height:100vh;height:100dvh;max-width:100%;overflow:hidden;overscroll-behavior:none}
   img,svg,video,canvas{max-width:100%}
   body{
@@ -69,7 +66,7 @@
   }
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
   ::selection{background:var(--accent-doux);color:var(--accent)}
-  /* barre de defilement discrete */
+  /* barre de défilement discrète */
   #chat::-webkit-scrollbar{width:10px}
   #chat::-webkit-scrollbar-thumb{background:var(--ligne2);border-radius:99px;border:3px solid var(--papier)}
   #chat::-webkit-scrollbar-thumb:hover{background:var(--encre3)}
@@ -95,15 +92,14 @@
   }
   .btn-ico:hover{background:var(--carte2);border-color:var(--ligne2);color:var(--encre)}
   .btn-ico:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  /* Nouvelle conversation : seule action d'en-tête, utile seulement une fois
-     la conversation commencée (masquée sur l'accueil). */
+  /* « Nouvelle conversation » : masquée sur l'accueil */
   body.vide #btn-nouveau{display:none}
 
   /* ============ Fil de conversation ============ */
   #chat{flex:1;min-height:0;overflow-y:auto;padding:14px 0 6px;scroll-behavior:smooth}
   .wrap{max-width:840px;margin:0 auto;padding:0 16px}
   .msg{margin-bottom:15px;display:flex;flex-direction:column;animation:pop .2s ease-out;scroll-margin-top:12px}
-  /* avatar du bot : identite visuelle discrete */
+  /* avatar du chatbot */
   .avarow{display:flex;gap:9px;align-items:flex-start}
   .avatar{
     flex:none;width:28px;height:28px;margin-bottom:2px;
@@ -184,7 +180,7 @@
   .graf svg{display:block;width:100%;height:auto}
   .graf .pt:hover{r:6}
 
-  /* tableau de resultats */
+  /* tableau de résultats */
   .tabres{margin-top:10px;max-width:92%;overflow-x:auto;border:1px solid var(--ligne);
     border-radius:12px;box-shadow:var(--ombre);background:var(--carte)}
   .tabres table{border-collapse:collapse;width:100%;font-size:.82rem}
@@ -204,8 +200,7 @@
   .liens a{min-width:0}
   .liens a:hover{border-color:var(--accent);color:var(--accent);transform:translateX(2px)}
   .liens a .ico{flex:none;font-size:.95rem}
-  /* bloc texte central : occupe l'espace restant et peut rétrécir (min-width:0)
-     pour que l'URL soit tronquée dans la carte au lieu de la faire déborder */
+  /* min-width:0 : l'adresse est tronquée au lieu de déborder */
   .liens a>span{min-width:0;flex:1;overflow:hidden}
   .liens a .t{font-weight:600;color:var(--encre);overflow-wrap:anywhere}
   .liens a:hover .t{color:var(--accent)}
@@ -223,7 +218,7 @@
     vertical-align:text-bottom;animation:clign .8s steps(1) infinite;border-radius:1px}
   @keyframes clign{50%{opacity:0}}
 
-  /* suggestions de suivi contextuelles */
+  /* suggestions de suivi */
   .suivre{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;max-width:92%}
   .suivre button{
     background:var(--accent-doux);border:1px solid transparent;color:var(--accent);
@@ -255,11 +250,7 @@
   @keyframes reb{0%,60%,100%{transform:none;opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 
   /* ============ Barre de saisie ============ */
-  /* flex-none : la barre garde sa taille et reste collée au bas du shell.
-     Marge basse un peu plus grande (prompt légèrement remonté) + respect de la
-     zone sûre iOS (encoche/barre gestuelle) pour qu'il ne soit jamais masqué. */
-  /* marge basse généreuse : la saisie ne colle pas au bord de l'écran
-     (barres gestuelles et pouces sur mobile, regard sur grand écran) */
+    /* marge basse : la saisie ne colle pas au bord de l'écran */
   #barre{flex:none;background:var(--papier);
     padding:4px 0 calc(28px + env(safe-area-inset-bottom))}
   #barre .wrap{max-width:720px;display:flex;flex-direction:column}
@@ -279,7 +270,7 @@
   input#q{
     flex:1;min-width:0;height:58px;padding:0 62px 0 22px;
     border:1px solid var(--ligne2);border-radius:29px;
-    /* 16px : sous ce seuil, iOS/Safari zoome automatiquement au focus. */
+    /* 16px minimum : évite le zoom automatique d'iOS */
     font-size:16px;outline:none;background:var(--carte);color:var(--encre);
     box-shadow:0 1px 2px rgba(11,27,43,.04),0 6px 24px rgba(11,27,43,.06);
     font-family:inherit;transition:border-color .15s;
@@ -295,8 +286,7 @@
   button#go.actif{opacity:1;pointer-events:auto;cursor:pointer}
   [data-theme="dark"] button#go{color:#0d1512}
   button#go:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  /* Bouton unique à trois états, permutés automatiquement (#98) :
-     champ vide -> micro · texte -> flèche d'envoi · dictée -> arrêt. */
+  /* Bouton à trois états : champ vide -> micro, texte -> envoi, dictée -> arrêt */
   button#go .ico{position:absolute;inset:0;margin:auto;width:18px;height:18px;
     opacity:0;transform:scale(.5);
     transition:opacity .16s,transform .22s cubic-bezier(.34,1.56,.64,1)}
@@ -307,8 +297,7 @@
   button#go.micro{background:transparent;color:var(--encre2)}
   [data-theme="dark"] button#go.micro{color:var(--encre2)}
   button#go.micro:hover{background:var(--carte2);color:var(--encre)}
-  /* dictée : anneau qui respire (moteur navigateur) ou suit le niveau de la
-     voix (moteur serveur, variable --niveau posée en direct) */
+  /* anneau de dictée : pulsation, ou niveau de la voix (--niveau) */
   button#go.ecoute::after{content:"";position:absolute;inset:0;border-radius:50%;
     pointer-events:none;
     box-shadow:0 0 0 calc(3px + var(--niveau,0) * 10px) color-mix(in srgb,var(--accent) 22%,transparent);
@@ -323,8 +312,7 @@
   .mention{text-align:center;font-size:.74rem;color:var(--encre3);margin-top:10px}
   .mention a{color:inherit;text-underline-offset:2px}
 
-  /* Accueil, grand écran : la saisie remonte au centre, sous la phrase, et
-     les exemples passent dessous. Mobile : elle reste en bas, au pouce. */
+  /* accueil sur grand écran : saisie centrée, exemples dessous ; mobile : saisie en bas */
   @media (min-width:641px){
     body.vide #chat{flex:0 0 auto;margin-top:auto;padding-bottom:28px;overflow:visible}
     body.vide #barre{margin-bottom:auto;padding-bottom:8vh}
@@ -332,7 +320,7 @@
     body.vide .mention{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom))}
   }
 
-  /* bouton flottant "descendre au dernier message" */
+  /* bouton « aller au dernier message » */
   #bas{
     position:fixed;right:22px;bottom:140px;width:38px;height:38px;border-radius:50%;
     border:1px solid var(--ligne);background:var(--carte);color:var(--encre2);
@@ -360,8 +348,8 @@
 <a class="skip" href="#q">Aller à la zone de saisie</a>
 <header>
   <div class="logo">
-    <span class="logo-mark"><img src="rama.svg" width="26" height="26" alt=""></span>
-    <h1>Rama</h1>
+    <span class="logo-mark"><img src="logo.svg" width="26" height="26" alt=""></span>
+    <h1>Chatbot ANSD</h1>
   </div>
   <div class="spacer"></div>
   <button class="btn-ico" id="btn-nouveau" title="Nouvelle conversation" aria-label="Nouvelle conversation">⟳</button>
@@ -384,7 +372,7 @@
       <svg class="ico ico-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/></svg>
     </button>
   </form>
-  <p class="mention">Rama peut se tromper. Vérifiez les chiffres sur <a href="https://www.ansd.sn" target="_blank" rel="noopener">ansd.sn</a> · <a href="/a-propos.html">À propos</a></p>
+  <p class="mention">Le chatbot peut se tromper. Vérifiez les chiffres sur <a href="https://www.ansd.sn" target="_blank" rel="noopener">ansd.sn</a> · <a href="/a-propos.html">À propos</a></p>
   <button id="bas" aria-label="Aller au dernier message" title="Dernier message">↓</button>
 </div></div>
 
@@ -395,8 +383,8 @@ const fil = document.getElementById('fil'), f = document.getElementById('f'),
       q = document.getElementById('q'), go = document.getElementById('go');
 let sessionId = null;
 let transcript = [];
-let dernieresSuggs = null;   /* suggestions contextuelles du dernier tour */
-let suivreBas = true;        /* auto-suivi : caler la réponse en haut, sauf si l'utilisateur a défilé */
+let dernieresSuggs = null;   /* suggestions du dernier tour */
+let suivreBas = true;        /* suivi automatique du bas, coupé si l'usager remonte */
 
 /* ============ thème : suit le réglage clair/sombre de l'appareil ============ */
 const racine = document.documentElement;
@@ -432,14 +420,16 @@ const LIBELLES = {
   superficie_km2:'superficie (km²)', gini:'indice de Gini',
   conso_moyenne_fcfa:'consommation moyenne (FCFA/an)', trimestre:'trimestre',
   profondeur:'profondeur (%)', severite:'sévérité (%)', valeur:'valeur',
-  libelle:'indicateur', densite_hab_km2:'densité (hab/km²)'
+  libelle:'indicateur', densite_hab_km2:'densité (hab/km²)',
+  hommes:'hommes', femmes:'femmes', urbaine:'population urbaine', rurale:'population rurale',
+  part_urbaine:'population urbaine (%)', tranche:"tranche d'âge", effectif:'effectif',
+  part:'part (%)', groupe_age:"groupe d'âges"
 };
 const lib = c => LIBELLES[c] || c;
 
-/* ============ suggestions : UNE zone, évolutive avec la conversation ====
-   À l'accueil : quatre amorces courtes (libellé bref, question complète).
-   Ensuite : les suggestions contextuelles renvoyées par le backend (liées au
-   sujet courant, jamais déjà posées). Chaque amorce est vérifiée répondable. */
+/* ============ suggestions ============
+   Accueil : quatre exemples (libellé court, question complète).
+   Ensuite : les suggestions renvoyées par l'API pour le sujet en cours. */
 const AMORCES = [
   {libelle:"Population du Sénégal", q:"Combien d'habitants compte le Sénégal ?"},
   {libelle:"Taux de chômage", q:"Quel est le taux de chômage ?"},
@@ -460,9 +450,7 @@ function montreSuggs(liste){
 }
 
 /* ============ graphique : barres horizontales, série unique ============ */
-/* Déclenché quand le SQL renvoie ≥3 lignes avec 1 colonne numérique.
-   Marques fines, extrémité arrondie côté données, étiquettes de valeur en
-   encre atténuée (l'axe est remplacé par les étiquettes directes). */
+/* au moins 3 lignes et une colonne numérique ; valeurs écrites au bout des barres */
 function grafBarres(data){
   const {columns, rows} = data;
   if (!rows || rows.length < 3) return null;
@@ -511,8 +499,7 @@ function serieTemporelle(data){
   return {iAn, iVal};
 }
 
-/* courbe SVG (série unique) : trait 2px, points ≥8px, étiquettes directes
-   premier/dernier + min/max, grille discrète, infobulles natives */
+/* courbe SVG : étiquettes aux extrémités et aux extrêmes, infobulles natives */
 function grafLigne(data, st){
   const {columns, rows} = data;
   const pts = rows.map(r => ({x: r[st.iAn], y: r[st.iVal]})).sort((a,b) => a.x - b.x);
@@ -637,7 +624,7 @@ function bulle(role, node){
   if (role === 'bot'){
     const row = document.createElement('div'); row.className = 'avarow';
     const av = document.createElement('div'); av.className = 'avatar';
-    av.innerHTML = '<img src="rama.svg" width="28" height="28" alt="">';
+    av.innerHTML = '<img src="logo.svg" width="28" height="28" alt="">';
     av.setAttribute('aria-hidden', 'true');
     row.append(av, b);
     d.appendChild(row);
@@ -648,9 +635,7 @@ function bulle(role, node){
   return d;
 }
 
-/* Mode débogage (soutenance / développement) : ?debug=1 affiche la
-   traçabilité technique (voie, confiance, latence, SQL). Par défaut,
-   l'interface grand public reste épurée — les données restent dans l'API. */
+/* ?debug=1 affiche la voie, la confiance, la latence et la requête SQL */
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
 function metaPour(d){
@@ -692,7 +677,7 @@ function metaPour(d){
     });
   };
   meta.appendChild(cp);
-  /* feedback (protocole d'évaluation SUS) */
+  /* avis de l'usager */
   if (d.message_id){
     const fb = document.createElement('div'); fb.className = 'fb';
     fb.setAttribute('role','group'); fb.setAttribute('aria-label','Évaluer cette réponse');
@@ -739,24 +724,19 @@ function composer(conteneur, d){
     det.innerHTML = '<summary>Requête SQL générée (traçabilité)</summary><code>' + esc(d.sql) + '</code>';
     conteneur.appendChild(det);
   }
-  /* les suggestions contextuelles alimentent la zone unique du bas
-     (montreSuggs est rappelee en fin de poser) */
-  transcript.push({role:'rama', text: texte, route: d.route,
+    transcript.push({role:'chatbot', text: texte, route: d.route,
     table: multi ? d.data : null,
     links: d.links || [],
     liens: (d.links || []).map(l => l.titre + ' <' + l.url + '>')});
   if (d.suggestions && d.suggestions.length) dernieresSuggs = d.suggestions;
   sauvegarde();
-  /* on NE défile PAS vers la fin : la réponse validée s'affiche à partir de son
-     début (la question reste ancrée en haut). Si la réponse déborde, le bouton
-     flottant « ↓ » permet d'aller directement au bas. */
-}
+  }
 
 /* ============ envoi (flux SSE avec repli non-flux) ============ */
 async function poser(txt){
   abandonneVoix();
   q.value = ''; go.disabled = true; majBouton();
-  /* la zone de suggestions se met en veille pendant la reponse */
+  /* suggestions masquées pendant la réponse */
   montreSuggs([]);
   masqueAccueil();
   transcript.push({role:'vous', text: txt});
@@ -767,14 +747,11 @@ async function poser(txt){
   attNode.innerHTML = '<i></i><i></i><i></i><span class="attente"></span>';
   attNode.setAttribute('aria-label','Le système analyse la question');
   const att = bulle('bot', attNode);
-  /* Suivi bas (comme ChatGPT/Claude) : la vue reste collée au bas pendant que la
-     réponse s'écrit, la dernière ligne générée est donc toujours visible. Si
-     l'utilisateur remonte le fil, le suivi se coupe (voir écouteur de défilement). */
+  /* la vue suit le bas pendant la rédaction, sauf si l'usager remonte le fil */
   suivreBas = true;
   requestAnimationFrame(() => versLeBas(false));
-  /* messages d'attente progressifs (inférence locale = plusieurs dizaines
-     de secondes) : l'utilisateur sait que le système travaille */
-  const etapes = [[4,'RAMA analyse votre question…'],
+  /* messages d'attente si la réponse tarde */
+  const etapes = [[4,'Analyse de votre question…'],
                   [12,'Consultation des données de l\'ANSD…'],
                   [30,'Rédaction de la réponse…'],
                   [60,'Encore un instant — le modèle local rédige une réponse complète…']];
@@ -782,9 +759,7 @@ async function poser(txt){
     const el = att.querySelector('.attente'); if (el) el.textContent = msg;
   }, s * 1000));
   const stopAttente = () => attenteTimers.forEach(clearTimeout);
-  /* Réseau faible (S8) : on annule si le serveur ne RÉPOND pas dans les
-     temps ; une fois le flux commencé, chaque fragment reçu relance le
-     minuteur d'inactivité (on ne coupe pas une réponse en cours). */
+  /* réseau faible : délai maximal d'attente, relancé à chaque fragment reçu */
   const ctrl = new AbortController();
   let watchdog = setTimeout(() => ctrl.abort(), 20000);
   const relance = () => { clearTimeout(watchdog);
@@ -813,10 +788,7 @@ async function poser(txt){
           stopAttente(); streame = true;
           texte += JSON.parse(data);
           bulleEl.innerHTML = '<p>' + md(texte) + '<span class="curseur"></span></p>';
-          /* Suivi bas : à chaque fragment, on recolle la vue au bas pour que la
-             dernière ligne générée reste visible (sauf si l'utilisateur a remonté
-             le fil lui-même — suivreBas passe alors à faux). */
-          void premier;
+                    void premier;
           if (suivreBas) versLeBas(false);
         } else if (ev === 'done'){
           fini = JSON.parse(data);
@@ -826,9 +798,7 @@ async function poser(txt){
     if (!fini) throw new Error('nostream');
     stopAttente();
     sessionId = fini.session_id || sessionId;
-    /* composer() réaffiche fini.answer (source de vérité validée) : sur la
-       voie streamée, cela remplace le texte si le rail de fidélité a modifié
-       la réponse (repli) ; sinon le texte reste identique. */
+    /* la réponse finale validée remplace le texte reçu au fil de l'eau */
     void streame;
     clearTimeout(watchdog);
     composer(att, fini);
@@ -839,7 +809,7 @@ async function poser(txt){
       att.querySelector('.bulle').innerHTML =
         'Trop de requêtes envoyées : patientez une minute puis réessayez.';
     } else {
-      /* repli : endpoint non-flux, avec son propre minuteur (réseau faible) */
+      /* repli sans flux */
       try{
         const c2 = new AbortController();
         const t2 = setTimeout(() => c2.abort(), 25000);
@@ -866,17 +836,13 @@ f.addEventListener('submit', e => {
   if (q.value.trim()) poser(q.value.trim());
 });
 
-/* ============ persistance de la conversation (P1-5) ============
-   La conversation et l'identifiant de session sont conservés sur l'appareil
-   de l'usager (localStorage), et restaurés au chargement : la continuité
-   d'expérience est préservée après un rafraîchissement. Aucune donnée
-   personnelle n'est stockée (Principe 6 de la statistique officielle). */
-const CLE_CONV = 'rama-conversation-v1';
+/* ============ conversation conservée sur l'appareil (localStorage) ============ */
+const CLE_CONV = 'chatbot-ansd-conversation';
 function sauvegarde(){
   try{
     localStorage.setItem(CLE_CONV, JSON.stringify(
       {sessionId, transcript, dernieresSuggs, ts: Date.now()}));
-  }catch(e){/* quota / mode privé : la persistance est optionnelle */}
+  }catch(e){/* stockage indisponible : conservation facultative */}
 }
 function masqueAccueil(){
   const a = document.querySelector('.accueil');
@@ -922,24 +888,17 @@ document.getElementById('btn-nouveau').onclick = () => {
 };
 
 
-/* ============ micro-interactions premium ============ */
-/* ============ saisie vocale (#98) ============
-   Un seul bouton, trois états permutés automatiquement :
-     champ vide -> micro (dicter) · texte -> flèche (envoyer) ·
-     dictée en cours -> carré (arrêter), le texte s'écrit en direct.
-   Moteur 1 : reconnaissance du navigateur (Web Speech API), texte en direct.
-   Moteur 2, repli : enregistrement + transcription serveur Whisper
-   (/api/transcribe), partielle toutes les ~3 s puis finale à l'arrêt.
-   Arrêt automatique après un silence. La question n'est jamais envoyée
-   d'office : l'usager relit, corrige au besoin, puis envoie. */
+/* ============ saisie vocale ============
+   Moteur 1 : reconnaissance du navigateur, texte écrit en direct.
+   Moteur 2 (repli) : enregistrement et transcription serveur (/api/transcribe).
+   Arrêt automatique sur silence ; la question n'est jamais envoyée d'office. */
 const Reconnaissance = window.SpeechRecognition || window.webkitSpeechRecognition;
 /* mobile : un énoncé par appui (le mode continu y duplique les résultats) */
 const MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const INDICE = q.placeholder, ECOUTE = 'Je vous écoute…', TRANSCRIPTION = 'Transcription…';
 const SILENCE_MS = 2000, MUET_MS = 7000, DUREE_MAX_MS = 60000;
-/* repli serveur : 1re transcription partielle 1,2 s après le début de la
-   parole (le texte apparaît vite), puis toutes les 2,5 s */
+/* repli serveur : 1re transcription 1,2 s après le début de la parole, puis toutes les 2,5 s */
 const PARTIEL_1_MS = 1200, PARTIEL_MS = 2500;
 const MSG_BLOQUE = 'Micro bloqué : autorisez-le pour ce site.',
       MSG_MUET = "Je n'ai rien entendu. Réessayez.",
@@ -966,7 +925,7 @@ function afficheDictee(){
   q.scrollLeft = q.scrollWidth;      // la fin de la dictée reste visible
   majBouton();
 }
-/* message bref affiché dans le champ lui-même : aucun composant de plus */
+/* message bref affiché dans le champ */
 function signale(msg){
   q.placeholder = msg;
   clearTimeout(signale.minuteur);
@@ -1038,10 +997,9 @@ function ecouteNavigateur(jeton){
     if (!valide()) return;
     const moteurHS = ['network', 'service-not-allowed', 'language-not-supported'].includes(e.error);
     if (moteurHS && voix.serveur){
-      /* moteur du navigateur inutilisable (Brave, Siri désactivé…) : on bascule
-         durablement sur la transcription serveur, sans rien demander */
+      /* moteur du navigateur indisponible : bascule sur le serveur */
       voix.moteur = 'serveur'; bascule = true;
-      try{ sessionStorage.setItem('rama-voix', 'serveur'); }catch(err){}
+      try{ sessionStorage.setItem('chatbot-ansd-voix', 'serveur'); }catch(err){}
     }
     else if (e.error === 'no-speech') signale(MSG_MUET);
     else if (e.error === 'not-allowed') signale(MSG_BLOQUE);
@@ -1083,8 +1041,7 @@ async function ecouteServeur(jeton){
   const morceaux = [];
   rec.ondataavailable = e => { if (e.data.size) morceaux.push(e.data); };
 
-  /* détecteur de parole : niveau RMS comparé au bruit ambiant mesuré au départ
-     -> arrêt sur silence, et anneau du bouton qui suit la voix */
+  /* niveau de la voix comparé au bruit ambiant : arrêt sur silence */
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const analyseur = ctx.createAnalyser(); analyseur.fftSize = 1024;
   ctx.createMediaStreamSource(flux).connect(analyseur);
@@ -1094,8 +1051,7 @@ async function ecouteServeur(jeton){
   let envoyes = 0, enVol = false, seq = 0, affiche = 0, fini = false, partiel = null;
 
   const libere = () => { flux.getTracks().forEach(t => t.stop()); ctx.close().catch(() => {}); };
-  /* chaque envoi porte tout l'audio depuis le début (fichier valide) ; une
-     réponse plus ancienne que celle déjà affichée est ignorée */
+  /* chaque envoi contient tout l'audio ; une réponse plus ancienne est ignorée */
   const transcrit = async () => {
     const n = ++seq; envoyes = morceaux.length;
     const blob = new Blob(morceaux, {type: rec.mimeType || 'audio/webm'});
@@ -1173,7 +1129,7 @@ async function ecouteServeur(jeton){
 (function initVoix(){
   if (!window.isSecureContext) return;               // micro exige HTTPS
   let force = new URLSearchParams(location.search).get('voix');
-  try{ force = force || sessionStorage.getItem('rama-voix'); }catch(e){}
+  try{ force = force || sessionStorage.getItem('chatbot-ansd-voix'); }catch(e){}
   if (Reconnaissance && force !== 'serveur') voix.moteur = 'navigateur';
   majBouton();
   if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return;
@@ -1189,16 +1145,13 @@ go.addEventListener('click', e => {
 /* frappe pendant la dictée : l'usager reprend la main, le texte est gardé */
 q.addEventListener('input', () => { if (voix.actif) abandonneVoix(); majBouton(); });
 
-/* "/" focalise le champ de saisie (raccourci standard) */
+/* « / » place le curseur dans le champ */
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== q){ e.preventDefault(); q.focus(); }
   if (e.key === 'Escape'){ if (voix.actif) arreteVoix(); else q.blur(); }
 });
 
-/* Clavier virtuel (mobile/tablette) : on cale la hauteur de l'app sur la zone
-   RÉELLEMENT visible (visualViewport). Clavier ouvert -> l'app se réduit et la
-   barre de saisie reste juste au-dessus du clavier, jamais masquée. Aucun
-   débordement (overflow:hidden) ni zoom (input 16px). */
+/* clavier virtuel : hauteur de l'application = zone visible */
 (function clage(){
   const vv = window.visualViewport;
   if (!vv) return;                       // navigateurs sans l'API : repli 100dvh
@@ -1210,16 +1163,14 @@ document.addEventListener('keydown', e => {
   applique();
 })();
 
-/* Toucher HORS de la barre de saisie referme le clavier (le champ revient en
-   place). On ne défocalise pas si le geste vise la barre elle-même. */
+/* toucher hors de la barre de saisie referme le clavier */
 document.addEventListener('pointerdown', (e) => {
   if (document.activeElement === q && !e.target.closest('#barre')) q.blur();
 }, {passive:true});
 
-/* bouton flottant vers le dernier message quand on a remonte le fil */
+/* bouton vers le dernier message */
 const chatEl = document.getElementById('chat'), basBtn = document.getElementById('bas');
-/* Colle la vue au bas (suivi de génération, style ChatGPT/Claude). Défini en
-   déclaration (hoistée) : appelable depuis poser() plus haut. */
+/* fait défiler jusqu'au dernier message */
 function versLeBas(doux){
   chatEl.scrollTo({top: chatEl.scrollHeight, behavior: doux ? 'smooth' : 'auto'});
 }
@@ -1230,7 +1181,7 @@ chatEl.addEventListener('scroll', () => {
 });
 basBtn.onclick = () => chatEl.scrollTo({top: chatEl.scrollHeight, behavior:'smooth'});
 
-/* restauration de la conversation précédente (P1-5), sauf démo par URL */
+/* reprise de la conversation, sauf question passée dans l'adresse (?q=) */
 const params = new URLSearchParams(location.search);
 if (params.get('theme')) appliqueTheme(params.get('theme'));
 if (params.get('q')){
@@ -1239,8 +1190,7 @@ if (params.get('q')){
   restaure();                        // usage normal : on reprend où on en était
 }
 if (!transcript.length) montreSuggs(AMORCES);
-/* focus initial au clavier physique seulement : sur mobile, il ouvrirait le
-   clavier virtuel et masquerait l'accueil. */
+/* curseur placé d'office seulement avec un clavier physique */
 if (matchMedia('(pointer: fine)').matches) q.focus();
 </script>
 </body>

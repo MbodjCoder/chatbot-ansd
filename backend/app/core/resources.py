@@ -1,18 +1,10 @@
-"""
-Rattachement des ressources officielles ANSD (liens verifies) aux reponses.
+"""Liens vers les publications de l'ANSD, tirés du registre vérifié data/resources.json.
 
-Objectif du memoire : faciliter l'ACCES A L'INFORMATION ET LA NAVIGATION sur
-le site de l'ANSD. Chaque reponse est accompagnee des pages et documents
-officiels pertinents, issus d'une base de liens dont chaque URL a ete
-verifiee (HTTP 200, date de verification dans data/resources.json).
-
-Appariement par PRECISION decroissante (un lien non pertinent nuit plus que
-l'absence de lien — meme arbitrage que la decision #34) :
-  1. table SQL utilisee -> publication source de cette table (deterministe) ;
-  2. document RAG cite -> publication dont il est extrait (deterministe) ;
-  3. themes de la question (lexical), avec seuil minimal ;
-les portails generiques (accueil, dernieres parutions, ANADS) ne sortent
-QUE sur une question de navigation explicite ("ou trouver", "telecharger"...).
+Ordre de priorité :
+  1. table SQL interrogée -> publication source ;
+  2. document cité -> publication d'origine ;
+  3. thèmes de la question, avec un seuil minimal.
+Les portails généraux ne sont proposés que sur une demande de navigation.
 """
 from __future__ import annotations
 import json
@@ -24,12 +16,8 @@ from app.core.config import settings
 
 _RES_PATH = Path(settings.database_path).parent / "resources.json"
 
-# Auto-linking (decision #78) : quand la reponse MENTIONNE une ressource
-# officielle par son nom, ce nom devient un lien cliquable vers la page/document
-# correspondant. Liste ordonnee du motif le PLUS specifique au moins specifique
-# (le premier qui matche gagne) ; chaque ressource n'est liee qu'UNE fois
-# (premiere occurrence) pour ne pas sur-charger le texte. Motifs tolerants aux
-# accents. Les URLs proviennent de la base verifiee resources.json.
+# Mentions rendues cliquables dans les réponses, du motif le plus précis au
+# plus général ; chaque ressource n'est liée qu'une fois.
 AUTOLINK_PATTERNS = [
     (r"annuaire statistique(?:\s+du\s+s[ée]n[ée]gal)?", "ansd_bases"),
     (r"plateforme\s+open\s+data(?:\s+du\s+s[ée]n[ée]gal)?|\bopen\s+data\b|\bODP\b", "ansd_bases"),
@@ -45,8 +33,7 @@ AUTOLINK_PATTERNS = [
     (r"RGPH[\s-]?5|recensement\s+g[ée]n[ée]ral(?:\s+de\s+la\s+population)?", "rgph5_rapports"),
     (r"\bENSAE\b|[ée]cole\s+.{0,20}statistique", "ensae"),
     (r"comptes\s+nationaux", "economie_2024"),
-    # « SES » seul est ambigu (mot français) : on n'accroche que la forme
-    # entre parenthèses « (SES) » ou la dénomination complète.
+    # « SES » seul est ambigu : forme « (SES) » ou nom complet uniquement
     (r"situation\s+[ée]conomique\s+et\s+sociale(?:\s+du\s+s[ée]n[ée]gal)?|\(SES\)", "ses_nationales"),
     (r"\bDAPSA\b|statistiques?\s+agricoles?", "dapsa"),
     (r"\bIPAR\b", "ipar"),
@@ -54,7 +41,7 @@ AUTOLINK_PATTERNS = [
     (r"site\s+(?:web\s+)?(?:officiel\s+)?de\s+l['’ ]?ANSD|www\.ansd\.sn", "ansd_accueil"),
 ]
 
-# document du corpus RAG -> ressources sources correspondantes
+# document du corpus -> publication source
 DOC_TO_RESOURCE = {
     "rgph5_synthese.md": ["rgph5_rapports"],
     "ehcvm_pauvrete.md": ["ehcvm_rapport_pdf"],
@@ -63,19 +50,15 @@ DOC_TO_RESOURCE = {
     "ansd_missions.md": ["ansd_accueil"],
     "comptes_nationaux.md": ["economie_2024"],
     "navigation_site_ansd.md": ["flash_stats", "anads"],
-    # une seule ressource canonique : les autres (calendrier, bases) sortent
-    # par les themes de la question, pas systematiquement
     "services_usagers_ansd.md": ["ansd_contact"],
     "operations_enquetes_ansd.md": ["ansd_enquetes"],
     "ensae_formation.md": ["ensae"],
     "faq_pratique_ansd.md": ["ansd_contact"],
     "annuaire_population_2025.md": ["annuaire_population_2025"],
-    # le glossaire est transversal : pas de publication source unique,
-    # l'appariement thematique fait le travail
     "glossaire_indicateurs.md": [],
 }
 
-# table SQL interrogee -> publication d'origine des chiffres
+# table SQL -> publication d'origine des chiffres
 TABLE_TO_RESOURCE = {
     "emploi": ["enes_page"],
     "inflation": ["ihpc_page"],
@@ -85,20 +68,15 @@ TABLE_TO_RESOURCE = {
     "population_nationale": ["rgph5_rapports"],
     "population_2025": ["annuaire_population_2025"],
     "structure_age_2025": ["annuaire_population_2025"],
-    # "regions" volontairement absent : cette table n'apparait que par
-    # jointure instrumentale, elle ne designe pas la publication d'origine
-    "indicateurs_nationaux": [],   # resolu par le CODE de l'indicateur (ci-dessous)
+    "indicateurs_nationaux": [],   # source déterminée par le code de l'indicateur
 }
 
-# indicateurs_nationaux : la source depend du CODE interroge. Les indicateurs de
-# pauvrete/inegalite/securite alimentaire viennent de l'EHCVM ; tous les autres
-# (demographie, education, equipement des menages, esperance de vie...) du RGPH-5.
-# Garantit un lien source pour CHAQUE indicateur (promesse P2 : toujours la source).
+# indicateurs issus de l'EHCVM ; tous les autres viennent du RGPH-5
 _INDIC_EHCVM = {"pauvrete_nationale", "pauvrete_2018", "pauvrete_extreme",
                 "pauvrete_rurale", "pauvrete_urbaine", "gini_national",
                 "insecurite_alim"}
 
-# portails generiques : seulement si la question est une navigation explicite
+# portails généraux : seulement sur une demande de navigation
 _GENERIC = {"ansd_accueil", "flash_stats", "anads", "recensement_sn", "bdef",
             "ansd_publications", "ansd_indicateurs", "ansd_actualites",
             "ansd_bases"}
@@ -125,23 +103,17 @@ class ResourceLinker:
         return re.findall(r"\b(?:FROM|JOIN)\s+([a-z_]+)", sql or "", re.I)
 
     def autolink(self, text: str, max_links: int = 6) -> str:
-        """Transforme en liens markdown les mentions de ressources officielles
-        dans une reponse (decision #78). Chaque ressource est liee au plus une
-        fois (premiere occurrence), sans chevauchement, hors zones deja liees.
-        Le texte affiche (le nom mentionne) est conserve ; seule l'URL est
-        ajoutee. Ne touche jamais aux chiffres."""
+        """Rend cliquables les mentions de publications (première occurrence,
+        sans toucher aux liens existants ni aux chiffres)."""
         if not text:
             return text
-        # zones DEJA liees (le LLM produit parfois ses propres liens markdown) :
-        # on ne les retouche pas, mais on continue a lier le reste du texte.
+        # liens déjà présents : laissés tels quels
         deja = [m.span() for m in re.finditer(r"\[[^\]]+\]\(https?://[^)]+\)", text)]
 
         def dans_lien(s, e):
             return any(not (e <= a or s >= b) for a, b in deja)
 
-        # 1) collecter la 1re occurrence de chaque MOTIF (chaque entite nommee
-        #    est cliquable, meme si deux entites pointent vers la meme page :
-        #    "Annuaire statistique" ET "Open Data" -> page Bases de donnees)
+        # première occurrence de chaque motif
         cands = []   # (start, end, url)
         for pattern, rid in AUTOLINK_PATTERNS:
             if rid not in self.resources:
@@ -149,18 +121,15 @@ class ResourceLinker:
             for m in re.finditer(pattern, text, re.I):
                 if m.group(0).strip() and not dans_lien(*m.span()):
                     cands.append((m.start(), m.end(), self.resources[rid]["url"]))
-                    break   # premiere occurrence libre de ce motif
-        # 2) selection gloutonne sans chevauchement, dans l'ordre du texte.
-        #    Chaque entite nommee reste cliquable meme si deux pointent vers la
-        #    meme page (Annuaire + Open Data -> Bases de donnees). Plafond pour
-        #    ne pas sur-charger.
+                    break
+        # sélection sans chevauchement, avec un plafond
         cands.sort()
         choisis, fin = [], -1
         for s, e, url in cands:
             if s >= fin and len(choisis) < max_links:
                 choisis.append((s, e, url))
                 fin = e
-        # 3) insertion de droite a gauche (preserve les offsets)
+        # insertion de droite à gauche (positions préservées)
         for s, e, url in sorted(choisis, reverse=True):
             text = f"{text[:s]}[{text[s:e]}]({url}){text[e:]}"
         return text
@@ -168,45 +137,38 @@ class ResourceLinker:
     def links_for(self, question: str, doc_sources: list[str],
                   sql: str | None = None, k: int = 3,
                   relax: bool = False) -> list[dict]:
-        """relax=True (voie navigation) : la question EST une demande de
-        lien, le seuil anti-bruit est abaisse a 1 theme concordant."""
+        """relax=True pour une demande de lien : un seul thème commun suffit."""
         q = _fold(question)
         nav = bool(_NAV_CUES.search(q)) or relax
         scores: dict[str, float] = {}
-        # 1. deterministe : table SQL interrogee -> publication source
+        # 1. table SQL interrogée
         tables = [t.lower() for t in self._tables_of(sql)]
         for table in tables:
             for rid in TABLE_TO_RESOURCE.get(table, []):
                 scores[rid] = scores.get(rid, 0) + 4.0
-        # 1bis. indicateurs_nationaux : source selon le CODE interroge
+        # indicateur national : source selon son code
         if "indicateurs_nationaux" in tables:
             codes = re.findall(r"'([a-z0-9_]+)'", sql or "")
             rid = ("ehcvm_rapport_pdf" if any(c in _INDIC_EHCVM for c in codes)
                    else "rgph5_rapports")
             scores[rid] = scores.get(rid, 0) + 4.0
-        # 2. deterministe : document RAG cite -> publication source.
-        # Seul le document le MIEUX classe pese pleinement : les documents
-        # secondaires du top-k n'apportent qu'un signal faible (sous le
-        # seuil s'ils ne sont pas confirmes par les themes de la question)
+        # 2. document cité (le premier compte pleinement, les autres faiblement)
         for rank, doc in enumerate(dict.fromkeys(doc_sources)):
             w = 3.0 if rank == 0 else 1.0
             for rid in DOC_TO_RESOURCE.get(doc, []):
                 scores[rid] = scores.get(rid, 0) + w
-        # 3. thematique : themes de la ressource presents dans la question
-        #    (les themes multi-mots, plus specifiques, pesent double)
+        # 3. thèmes communs (une expression de plusieurs mots compte double)
         for rid, res in self.resources.items():
             hit = sum(2.0 if " " in t else 1.0
                       for t in res["themes"] if _fold(t) in q)
             if hit:
                 scores[rid] = scores.get(rid, 0) + hit
-        # filtre de pertinence : les generiques exigent une question de
-        # navigation ; les autres exigent un score minimal (seuil anti-bruit)
+        # seuil de pertinence ; portails généraux sur demande de navigation seulement
         def ok(rid: str, s: float) -> bool:
             if rid in _GENERIC:
                 return nav and s >= 1.0
             return s >= (1.0 if relax else 2.0)
-        # ressource SPECIFIQUE avant portail generique : le document exact
-        # que cherche l'usager prime toujours sur la page d'ensemble
+        # document précis avant portail général
         best = sorted(((rid, s) for rid, s in scores.items() if ok(rid, s)),
                       key=lambda x: (x[0] in _GENERIC, -x[1]))[:k]
         return [self._as_link(rid) for rid, _ in best]
@@ -216,9 +178,7 @@ class ResourceLinker:
         return {"titre": r["titre"], "url": r["url"], "type": r["type"]}
 
     def fallback(self, prefer: str = "ansd_indicateurs") -> dict:
-        """Lien source GARANTI (promesse P2 : toute reponse porte au moins une
-        source officielle). Utilise quand aucun lien specifique n'a ete derive :
-        une page verifiee de l'ANSD, jamais rien d'invente."""
+        """Lien de secours vers une page vérifiée de l'ANSD."""
         for rid in (prefer, "ansd_indicateurs", "ansd_publications", "ansd_accueil"):
             if rid in self.resources:
                 return self._as_link(rid)

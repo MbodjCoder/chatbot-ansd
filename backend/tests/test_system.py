@@ -116,7 +116,7 @@ def test_smalltalk_pas_de_rejeu():
 
 
 def test_smalltalk_actes_sociaux():
-    assert "RAMA" in bot.ask("qui es-tu ?").answer
+    assert "Chatbot ANSD" in bot.ask("qui es-tu ?").answer
     assert bot.ask("merci beaucoup").route == "CHAT"
     assert bot.ask("bonjour").route == "CHAT"
     assert bot.ask("au revoir").route == "CHAT"
