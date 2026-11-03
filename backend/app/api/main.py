@@ -65,7 +65,7 @@ async def _on_error(request: Request, exc: Exception):
 _PAGE_404 = (
     "<!doctype html><html lang=fr><head><meta charset=utf-8>"
     "<meta name=viewport content='width=device-width,initial-scale=1'>"
-    "<link rel=icon type=image/svg+xml href=/favicon.svg>"
+    "<link rel=icon type=image/svg+xml href=/rama.svg>"
     "<title>Page introuvable — RAMA</title>"
     "<style>body{font-family:'Inter',Segoe UI,sans-serif;background:#f4f8fc;"
     "color:#0a2440;display:flex;min-height:100vh;align-items:center;"

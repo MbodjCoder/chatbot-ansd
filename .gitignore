@@ -17,6 +17,7 @@ backend/data/logs/
 backend/data/*.sqlite
 backend/data/*.db
 *.png
+!frontend/*.png
 docs/*.docx
 
 # OS / IDE
