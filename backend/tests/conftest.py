@@ -1,7 +1,14 @@
 """Fixtures partagées des tests."""
-import pytest
+import os
 
-from app.core.chatbot import ANSDChatbot
+# Mode démo forcé avant tout import de l'application : la configuration
+# (pydantic-settings) est lue une seule fois, au premier import ; si .env
+# active la production, les tests déterministes appelleraient le vrai LLM.
+os.environ["ANSD_MODE"] = "demo"
+
+import pytest  # noqa: E402
+
+from app.core.chatbot import ANSDChatbot  # noqa: E402
 
 
 @pytest.fixture(scope="session")
