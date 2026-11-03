@@ -21,6 +21,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -259,3 +260,44 @@ def health():
 frontend = Path(__file__).resolve().parents[3] / "frontend"
 if frontend.exists():
     app.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")
+
+
+# Performance de chargement (#96) : l'interface doit s'ouvrir vite sur tout
+# appareil, y compris en 3G. Deux leviers sans dépendance :
+#  - cache navigateur : HTML revalidé à chaque visite (ETag -> 304, jamais de
+#    version périmée), ressources statiques (images, icônes) gardées 7 jours ;
+#  - compression gzip (~4x sur le HTML), sauf le flux SSE qui doit partir
+#    fragment par fragment (une compression tamponnerait l'affichage progressif).
+_CACHE_LONG = (".jpg", ".png", ".svg", ".webp", ".ico", ".webmanifest")
+
+
+@app.middleware("http")
+async def _cache_statique(request: Request, call_next):
+    reponse = await call_next(request)
+    chemin = request.url.path
+    if not chemin.startswith("/api/"):
+        if chemin.endswith(_CACHE_LONG):
+            reponse.headers["Cache-Control"] = "public, max-age=604800"
+        else:
+            reponse.headers["Cache-Control"] = "no-cache"
+    return reponse
+
+
+class _GzipSaufFlux:
+    """GZip pour les réponses textuelles, sauf le flux SSE et les images
+    (formats déjà compressés : les recompresser coûte du CPU pour rien)."""
+
+    def __init__(self, application):
+        self.brut = application
+        self.compresse = GZipMiddleware(application, minimum_size=800)
+
+    async def __call__(self, scope, receive, send):
+        chemin = scope.get("path", "")
+        if scope["type"] == "http" and (chemin == "/api/chat/stream"
+                                        or chemin.endswith((".jpg", ".png", ".webp"))):
+            await self.brut(scope, receive, send)
+        else:
+            await self.compresse(scope, receive, send)
+
+
+app.add_middleware(_GzipSaufFlux)
