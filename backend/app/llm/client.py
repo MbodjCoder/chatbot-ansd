@@ -31,7 +31,8 @@ from dataclasses import dataclass
 PROVIDER_PRESETS: dict[str, tuple[str, str]] = {
     "deepseek":   ("https://api.deepseek.com/v1",           "deepseek-chat"),
     "openai":     ("https://api.openai.com/v1",             "gpt-4o-mini"),
-    "groq":       ("https://api.groq.com/openai/v1",        "llama-3.3-70b-versatile"),
+    # llama-3.3-70b-versatile retiré par Groq (404 model_not_found, nov. 2026) -> #100
+    "groq":       ("https://api.groq.com/openai/v1",        "openai/gpt-oss-120b"),
     "mistral":    ("https://api.mistral.ai/v1",             "mistral-large-latest"),
     "openrouter": ("https://openrouter.ai/api/v1",          "deepseek/deepseek-chat"),
     "ollama":     ("http://localhost:11434/v1",             "llama3.1"),

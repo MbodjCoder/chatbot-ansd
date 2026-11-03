@@ -13,6 +13,8 @@ Verifie : completion, streaming SSE, nouvelles tentatives sur erreur 500.
 import json
 import sys
 import threading
+
+import pytest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -20,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.llm.client import FallbackLLM, OpenAICompatClient
 
-PORT = 8765
+PORT = 0                # attribué au démarrage du faux serveur (port libre)
 FAIL_ONCE = {"n": 0}   # pour le test de retry
 
 
@@ -54,6 +56,18 @@ class FakeOpenAI(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def faux_serveur():
+    """Démarre le faux serveur OpenAI pour les tests de ce module (sous pytest
+    comme en exécution directe) ; port 0 = port libre choisi par le système."""
+    global PORT
+    srv = HTTPServer(("localhost", 0), FakeOpenAI)
+    PORT = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield
+    srv.shutdown()
 
 
 def test_completion():
@@ -123,7 +137,8 @@ def test_fallback_si_api_morte():
 
 
 if __name__ == "__main__":
-    srv = HTTPServer(("localhost", PORT), FakeOpenAI)
+    srv = HTTPServer(("localhost", 0), FakeOpenAI)
+    PORT = srv.server_address[1]
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     fails = 0
     for name, fn in sorted({k: v for k, v in globals().items()
