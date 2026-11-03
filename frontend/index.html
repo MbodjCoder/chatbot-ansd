@@ -290,9 +290,33 @@
     opacity:.25;pointer-events:none;transition:opacity .15s;
   }
   button#go.actif{opacity:1;pointer-events:auto;cursor:pointer}
-  button#go svg{width:18px;height:18px}
   [data-theme="dark"] button#go{color:#0d1512}
   button#go:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  /* Bouton unique à trois états, permutés automatiquement (#98) :
+     champ vide -> micro · texte -> flèche d'envoi · dictée -> arrêt. */
+  button#go .ico{position:absolute;inset:0;margin:auto;width:18px;height:18px;
+    opacity:0;transform:scale(.5);
+    transition:opacity .16s,transform .22s cubic-bezier(.34,1.56,.64,1)}
+  button#go .ico-envoi{opacity:1;transform:none}
+  button#go.micro .ico-envoi,button#go.ecoute .ico-envoi{opacity:0;transform:scale(.5)}
+  button#go.micro .ico-micro,button#go.ecoute .ico-stop{opacity:1;transform:none}
+  button#go.micro,button#go.ecoute{opacity:1;pointer-events:auto;cursor:pointer}
+  button#go.micro{background:transparent;color:var(--encre2)}
+  [data-theme="dark"] button#go.micro{color:var(--encre2)}
+  button#go.micro:hover{background:var(--carte2);color:var(--encre)}
+  /* dictée : anneau qui respire (moteur navigateur) ou suit le niveau de la
+     voix (moteur serveur, variable --niveau posée en direct) */
+  button#go.ecoute::after{content:"";position:absolute;inset:0;border-radius:50%;
+    pointer-events:none;
+    box-shadow:0 0 0 calc(3px + var(--niveau,0) * 10px) color-mix(in srgb,var(--accent) 22%,transparent);
+    transition:box-shadow .08s linear;animation:onde 1.6s ease-in-out infinite}
+  button#go.ecoute[style*="--niveau"]::after{animation:none}
+  @keyframes onde{
+    0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent)}
+    50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--accent) 8%,transparent)}}
+  button#go.traite{opacity:.55;pointer-events:none}
+  button#go:disabled{opacity:.25;pointer-events:none}
+  .saisie.ecoute input#q{border-color:color-mix(in srgb,var(--accent) 55%,var(--ligne2))}
   .mention{text-align:center;font-size:.74rem;color:var(--encre3);margin-top:10px}
   .mention a{color:inherit;text-underline-offset:2px}
 
@@ -351,7 +375,9 @@
     <input id="q" placeholder="Population, emploi, pauvreté, prix…"
            autocomplete="off" required maxlength="500" aria-label="Votre question">
     <button id="go" type="submit" aria-label="Envoyer la question" title="Envoyer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      <svg class="ico ico-envoi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      <svg class="ico ico-micro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <svg class="ico ico-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/></svg>
     </button>
   </form>
   <p class="mention">Rama peut se tromper. Vérifiez les chiffres sur <a href="https://www.ansd.sn" target="_blank" rel="noopener">ansd.sn</a> · <a href="/a-propos.html">À propos</a></p>
@@ -724,7 +750,8 @@ function composer(conteneur, d){
 
 /* ============ envoi (flux SSE avec repli non-flux) ============ */
 async function poser(txt){
-  q.value = ''; go.classList.remove('actif'); go.disabled = true;
+  abandonneVoix();
+  q.value = ''; go.disabled = true; majBouton();
   /* la zone de suggestions se met en veille pendant la reponse */
   montreSuggs([]);
   masqueAccueil();
@@ -826,10 +853,14 @@ async function poser(txt){
       }
     }
   }
-  go.disabled = false; q.focus();
+  go.disabled = false; majBouton(); q.focus();
   montreSuggs(dernieresSuggs || AMORCES);
 }
-f.addEventListener('submit', e => {e.preventDefault(); if (q.value.trim()) poser(q.value.trim());});
+f.addEventListener('submit', e => {
+  e.preventDefault();
+  abandonneVoix();
+  if (q.value.trim()) poser(q.value.trim());
+});
 
 /* ============ persistance de la conversation (P1-5) ============
    La conversation et l'identifiant de session sont conservés sur l'appareil
@@ -888,13 +919,276 @@ document.getElementById('btn-nouveau').onclick = () => {
 
 
 /* ============ micro-interactions premium ============ */
-/* icone d'envoi : apparait a la frappe, disparait quand le champ se vide */
-q.addEventListener('input', () => go.classList.toggle('actif', q.value.trim().length > 0));
+/* ============ saisie vocale (#98) ============
+   Un seul bouton, trois états permutés automatiquement :
+     champ vide -> micro (dicter) · texte -> flèche (envoyer) ·
+     dictée en cours -> carré (arrêter), le texte s'écrit en direct.
+   Moteur 1 : reconnaissance du navigateur (Web Speech API), texte en direct.
+   Moteur 2, repli : enregistrement + transcription serveur Whisper
+   (/api/transcribe), partielle toutes les ~3 s puis finale à l'arrêt.
+   Arrêt automatique après un silence. La question n'est jamais envoyée
+   d'office : l'usager relit, corrige au besoin, puis envoie. */
+const Reconnaissance = window.SpeechRecognition || window.webkitSpeechRecognition;
+/* mobile : un énoncé par appui (le mode continu y duplique les résultats) */
+const MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const INDICE = q.placeholder, ECOUTE = 'Je vous écoute…', TRANSCRIPTION = 'Transcription…';
+const SILENCE_MS = 2000, MUET_MS = 7000, DUREE_MAX_MS = 60000;
+/* repli serveur : 1re transcription partielle 1,2 s après le début de la
+   parole (le texte apparaît vite), puis toutes les 2,5 s */
+const PARTIEL_1_MS = 1200, PARTIEL_MS = 2500;
+const MSG_BLOQUE = 'Micro bloqué : autorisez-le pour ce site.',
+      MSG_MUET = "Je n'ai rien entendu. Réessayez.",
+      MSG_SANS_MICRO = 'Aucun micro détecté.';
+const voix = {
+  moteur: null,      // 'navigateur' | 'serveur' | null (dictée indisponible)
+  serveur: false,    // transcription serveur disponible (/api/health)
+  actif: false,
+  jeton: 0,          // invalide les événements d'une dictée abandonnée
+  base: '',          // texte déjà présent dans le champ avant la dictée
+  acquis: '', provisoire: '',
+  arret: null,       // arrêt propre : finalise le texte
+  annule: null,      // arrêt immédiat : libère le micro sans réécrire le champ
+  silence: null,
+};
+
+function joint(a, b){
+  a = (a || '').trim(); b = (b || '').trim();
+  return a && b ? a + ' ' + b : a || b;
+}
+function afficheDictee(){
+  const dit = joint(voix.acquis, voix.provisoire);
+  q.value = voix.base ? joint(voix.base, dit) : dit.charAt(0).toUpperCase() + dit.slice(1);
+  q.scrollLeft = q.scrollWidth;      // la fin de la dictée reste visible
+  majBouton();
+}
+/* message bref affiché dans le champ lui-même : aucun composant de plus */
+function signale(msg){
+  q.placeholder = msg;
+  clearTimeout(signale.minuteur);
+  signale.minuteur = setTimeout(() => { if (!voix.actif) q.placeholder = INDICE; }, 3500);
+}
+function majBouton(){
+  const texte = q.value.trim().length > 0;
+  go.classList.toggle('ecoute', voix.actif);
+  go.classList.toggle('actif', !voix.actif && texte);
+  go.classList.toggle('micro', !voix.actif && !texte && !!voix.moteur);
+  f.classList.toggle('ecoute', voix.actif);
+  const libelle = voix.actif ? 'Arrêter la dictée'
+    : (!texte && voix.moteur) ? 'Dicter votre question' : 'Envoyer la question';
+  go.setAttribute('aria-label', libelle); go.title = libelle;
+}
+
+function demarreVoix(){
+  if (voix.actif || !voix.moteur || go.disabled) return;
+  voix.actif = true; voix.jeton++;
+  voix.base = q.value.trim(); voix.acquis = ''; voix.provisoire = '';
+  clearTimeout(signale.minuteur);
+  q.placeholder = ECOUTE;
+  majBouton();
+  (voix.moteur === 'navigateur' ? ecouteNavigateur : ecouteServeur)(voix.jeton);
+}
+/* retour au repos ; le texte dicté reste dans le champ */
+function termineVoix(){
+  voix.actif = false; voix.arret = voix.annule = null;
+  clearTimeout(voix.silence);
+  if (q.placeholder === ECOUTE || q.placeholder === TRANSCRIPTION) q.placeholder = INDICE;
+  go.classList.remove('traite');
+  go.style.removeProperty('--niveau');
+  majBouton();
+}
+function arreteVoix(){ if (voix.actif && voix.arret) voix.arret(); }
+function abandonneVoix(){
+  if (!voix.actif) return;
+  const annule = voix.annule;
+  voix.jeton++;                      // les événements tardifs seront ignorés
+  if (annule) annule();
+  termineVoix();
+}
+
+/* --- moteur 1 : reconnaissance du navigateur ----------------------------- */
+function ecouteNavigateur(jeton){
+  const r = new Reconnaissance();
+  r.lang = 'fr-FR'; r.interimResults = true; r.maxAlternatives = 1;
+  r.continuous = !MOBILE;
+  const valide = () => voix.actif && voix.jeton === jeton;
+  let entendu = false, bascule = false;
+  voix.arret = () => { try{ r.stop(); }catch(e){} };      // finalise, puis onend
+  voix.annule = () => { try{ r.abort(); }catch(e){} };
+  const muet = setTimeout(() => { if (valide() && !entendu) voix.arret(); }, MUET_MS);
+  const max = setTimeout(() => { if (valide()) voix.arret(); }, DUREE_MAX_MS);
+  r.onresult = e => {
+    if (!valide()) return;
+    let fin = '', prov = '';
+    for (let i = 0; i < e.results.length; i++){
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) fin += t; else prov += t;
+    }
+    entendu = true;
+    voix.acquis = fin; voix.provisoire = prov;
+    afficheDictee();
+    clearTimeout(voix.silence);
+    voix.silence = setTimeout(() => { if (valide()) voix.arret(); }, SILENCE_MS);
+  };
+  r.onerror = e => {
+    if (!valide()) return;
+    const moteurHS = ['network', 'service-not-allowed', 'language-not-supported'].includes(e.error);
+    if (moteurHS && voix.serveur){
+      /* moteur du navigateur inutilisable (Brave, Siri désactivé…) : on bascule
+         durablement sur la transcription serveur, sans rien demander */
+      voix.moteur = 'serveur'; bascule = true;
+      try{ sessionStorage.setItem('rama-voix', 'serveur'); }catch(err){}
+    }
+    else if (e.error === 'no-speech') signale(MSG_MUET);
+    else if (e.error === 'not-allowed') signale(MSG_BLOQUE);
+    else if (e.error === 'audio-capture') signale(MSG_SANS_MICRO);
+    else if (e.error !== 'aborted') signale('Dictée indisponible sur ce navigateur.');
+  };
+  r.onend = () => {
+    clearTimeout(muet); clearTimeout(max);
+    if (!valide()) return;
+    if (bascule && !entendu){ termineVoix(); demarreVoix(); return; }
+    /* un résultat provisoire non finalisé (arrêt rapide) est conservé */
+    voix.acquis = joint(voix.acquis, voix.provisoire); voix.provisoire = '';
+    if (entendu) afficheDictee();
+    termineVoix();
+  };
+  try{ r.start(); }
+  catch(e){ clearTimeout(muet); clearTimeout(max); signale('Dictée indisponible.'); termineVoix(); }
+}
+
+/* --- moteur 2 : enregistrement + transcription serveur -------------------- */
+async function ecouteServeur(jeton){
+  const valide = () => voix.actif && voix.jeton === jeton;
+  let flux;
+  try{
+    flux = await navigator.mediaDevices.getUserMedia({audio: {
+      echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1}});
+  }catch(e){
+    if (voix.jeton === jeton){
+      signale(e.name === 'NotAllowedError' ? MSG_BLOQUE : MSG_SANS_MICRO);
+      termineVoix();
+    }
+    return;
+  }
+  if (!valide()){ flux.getTracks().forEach(t => t.stop()); return; }
+
+  const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
+    .find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const rec = new MediaRecorder(flux, type ? {mimeType: type, audioBitsPerSecond: 32000} : undefined);
+  const morceaux = [];
+  rec.ondataavailable = e => { if (e.data.size) morceaux.push(e.data); };
+
+  /* détecteur de parole : niveau RMS comparé au bruit ambiant mesuré au départ
+     -> arrêt sur silence, et anneau du bouton qui suit la voix */
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const analyseur = ctx.createAnalyser(); analyseur.fftSize = 1024;
+  ctx.createMediaStreamSource(flux).connect(analyseur);
+  const ech = new Uint8Array(analyseur.fftSize);
+  const debut = performance.now();
+  let bruit = 0, nBruit = 0, parle = false, debutParole = 0, derniereVoix = 0, dernierEnvoi = 0;
+  let envoyes = 0, enVol = false, seq = 0, affiche = 0, fini = false, partiel = null;
+
+  const libere = () => { flux.getTracks().forEach(t => t.stop()); ctx.close().catch(() => {}); };
+  /* chaque envoi porte tout l'audio depuis le début (fichier valide) ; une
+     réponse plus ancienne que celle déjà affichée est ignorée */
+  const transcrit = async () => {
+    const n = ++seq; envoyes = morceaux.length;
+    const blob = new Blob(morceaux, {type: rec.mimeType || 'audio/webm'});
+    const ctrl = new AbortController();
+    const delai = setTimeout(() => ctrl.abort(), 12000);   // réseau faible : jamais bloqué
+    try{
+      const r = await fetch('/api/transcribe', {method: 'POST', signal: ctrl.signal,
+        headers: {'Content-Type': blob.type}, body: blob});
+      if (!r.ok) return;
+      const d = await r.json();
+      if (voix.jeton !== jeton || n < affiche) return;
+      affiche = n; voix.acquis = d.texte || '';
+      afficheDictee();
+    }catch(e){ /* réseau : la transcription finale réessaiera */ }
+    finally{ clearTimeout(delai); }
+  };
+  const arrete = () => {
+    if (fini) return;
+    fini = true; clearInterval(partiel);
+    q.placeholder = TRANSCRIPTION;
+    go.classList.add('traite');
+    go.style.removeProperty('--niveau');
+    let clos = false;
+    const cloture = async () => {
+      if (clos) return;
+      clos = true; libere();
+      if (parle && morceaux.length) await transcrit();
+      if (voix.jeton === jeton){
+        if (parle && !q.value.trim()) signale(MSG_MUET);
+        termineVoix();
+      }
+    };
+    rec.onstop = cloture;
+    setTimeout(cloture, 3000);      // filet : enregistreur qui ne se ferme pas
+    try{ rec.stop(); }catch(e){ cloture(); }
+  };
+  const annule = () => {
+    if (fini) return;
+    fini = true; clearInterval(partiel);
+    rec.onstop = null;
+    try{ rec.stop(); }catch(e){}
+    libere();
+  };
+  voix.arret = arrete; voix.annule = annule;
+
+  const boucle = () => {
+    if (!valide() || fini) return;
+    analyseur.getByteTimeDomainData(ech);
+    let somme = 0;
+    for (const v of ech){ const x = (v - 128) / 128; somme += x * x; }
+    const rms = Math.sqrt(somme / ech.length), t = performance.now();
+    if (t - debut < 400){ bruit += rms; nBruit++; }          // calibrage
+    const seuil = Math.min(0.06, Math.max(0.02, nBruit ? 2.5 * bruit / nBruit : 0.02));
+    if (rms > seuil){ if (!parle) debutParole = t; parle = true; derniereVoix = t; }
+    go.style.setProperty('--niveau', Math.min(1, rms * 6).toFixed(2));
+    if (parle && t - derniereVoix > SILENCE_MS) return arrete();
+    if (!parle && t - debut > MUET_MS){ signale(MSG_MUET); annule(); termineVoix(); return; }
+    if (t - debut > DUREE_MAX_MS) return arrete();
+    requestAnimationFrame(boucle);
+  };
+
+  rec.start(500);
+  partiel = setInterval(() => {
+    const t = performance.now();
+    const du = seq ? dernierEnvoi + PARTIEL_MS : debutParole + PARTIEL_1_MS;
+    if (parle && !enVol && t >= du && morceaux.length > envoyes){
+      enVol = true; dernierEnvoi = t;
+      transcrit().finally(() => { enVol = false; });
+    }
+  }, 200);
+  requestAnimationFrame(boucle);
+}
+
+/* --- choix du moteur, branchements --------------------------------------- */
+(function initVoix(){
+  if (!window.isSecureContext) return;               // micro exige HTTPS
+  let force = new URLSearchParams(location.search).get('voix');
+  try{ force = force || sessionStorage.getItem('rama-voix'); }catch(e){}
+  if (Reconnaissance && force !== 'serveur') voix.moteur = 'navigateur';
+  majBouton();
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return;
+  fetch('/api/health').then(r => r.json()).then(h => {
+    voix.serveur = !!h.voix_serveur;
+    if (voix.serveur && !voix.moteur){ voix.moteur = 'serveur'; majBouton(); }
+  }).catch(() => {});
+})();
+go.addEventListener('click', e => {
+  if (voix.actif){ e.preventDefault(); arreteVoix(); return; }
+  if (!q.value.trim() && voix.moteur){ e.preventDefault(); demarreVoix(); }
+});
+/* frappe pendant la dictée : l'usager reprend la main, le texte est gardé */
+q.addEventListener('input', () => { if (voix.actif) abandonneVoix(); majBouton(); });
 
 /* "/" focalise le champ de saisie (raccourci standard) */
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== q){ e.preventDefault(); q.focus(); }
-  if (e.key === 'Escape') q.blur();
+  if (e.key === 'Escape'){ if (voix.actif) arreteVoix(); else q.blur(); }
 });
 
 /* Clavier virtuel (mobile/tablette) : on cale la hauteur de l'app sur la zone

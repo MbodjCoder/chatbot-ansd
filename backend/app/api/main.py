@@ -5,6 +5,7 @@ Endpoints :
   POST /api/chat        : question -> reponse + tracabilite complete
   POST /api/chat/stream : meme contrat, reponse en flux SSE (affichage
                           progressif : evenements meta / delta / done)
+  POST /api/transcribe  : dictée vocale -> texte (repli serveur Whisper, #98)
   POST /api/feedback    : retour utilisateur (pouce haut/bas) -> journal JSONL
                           (necessaire au protocole d'evaluation SUS du memoire)
   GET  /api/health      : etat du systeme
@@ -19,6 +20,7 @@ import time
 from collections import defaultdict, deque
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -30,6 +32,7 @@ from pydantic import BaseModel, Field
 from app.core import telemetry
 from app.core.chatbot import ANSDChatbot
 from app.core.config import settings
+from app.llm import transcription
 
 app = FastAPI(
     title="RAMA-ANSD",
@@ -120,11 +123,14 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "?"
 
 
-def _rate_limit(request: Request, max_req: int = RATE_MAX_REQ) -> None:
+def _rate_limit(request: Request, max_req: int = RATE_MAX_REQ,
+                canal: str = "chat") -> None:
+    # Un compteur par canal : la dictée vocale (plusieurs transcriptions
+    # partielles par question) ne consomme pas le quota des questions.
     ip = _client_ip(request)
     now = time.time()
     with _hits_lock:
-        dq = _hits[ip]
+        dq = _hits[ip if canal == "chat" else f"{canal}|{ip}"]
         while dq and now - dq[0] > RATE_WINDOW_S:
             dq.popleft()
         if len(dq) >= max_req:
@@ -228,6 +234,36 @@ def feedback(f: Feedback, request: Request):
     return {"status": "merci"}
 
 
+RATE_MAX_VOIX = 40   # transcriptions/min/IP (partielles comprises, ~3 s d'écart)
+
+
+@app.post("/api/transcribe", summary="Transcrire une dictée vocale (repli serveur)")
+async def transcribe(request: Request):
+    """Corps = audio brut (webm/opus, mp4…), Content-Type = son type MIME.
+    Utilisé seulement quand le navigateur n'a pas de reconnaissance vocale
+    intégrée (#98). Réponse : {"texte": "..."}."""
+    _rate_limit(request, max_req=RATE_MAX_VOIX, canal="voix")
+    if not transcription.disponible():
+        raise HTTPException(status_code=503, detail="Saisie vocale indisponible.")
+    taille = int(request.headers.get("content-length") or 0)
+    if taille > transcription.TAILLE_MAX_OCTETS:
+        raise HTTPException(status_code=413, detail="Enregistrement trop long.")
+    audio = await request.body()
+    if not audio:
+        raise HTTPException(status_code=400, detail="Audio vide.")
+    if len(audio) > transcription.TAILLE_MAX_OCTETS:
+        raise HTTPException(status_code=413, detail="Enregistrement trop long.")
+    try:
+        texte = await transcription.transcrire(
+            audio, request.headers.get("content-type", "audio/webm"))
+    except httpx.HTTPStatusError as e:
+        code = 429 if e.response.status_code == 429 else 502
+        raise HTTPException(status_code=code, detail="Transcription indisponible.")
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Transcription indisponible.")
+    return {"texte": texte}
+
+
 @app.get("/api/metrics", summary="Metriques d'usage agregees (observabilite)")
 def metrics():
     """Indicateurs de pilotage (P2-7) : volume, repartition des voies,
@@ -254,7 +290,8 @@ def health():
             "llm_actif": not bot.is_mock,
             "modele": getattr(bot.llm, "model", "?"),
             "llm_ok": getattr(bot.llm, "last_error", None) is None,
-            "documents_indexes": bot.docs_indexed}
+            "documents_indexes": bot.docs_indexed,
+            "voix_serveur": transcription.disponible()}
 
 
 frontend = Path(__file__).resolve().parents[3] / "frontend"
