@@ -31,3 +31,6 @@ CONTEXTE-PROJET.md
 docs/*
 !docs/Chatbot_ANSD_Etat_et_Besoins.docx
 !docs/Chatbot_ANSD_Etat_et_Besoins.pdf
+
+# Outils locaux
+.claude
